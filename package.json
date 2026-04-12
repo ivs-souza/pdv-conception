@@ -5,27 +5,26 @@
     "main": "index.js",
     "scripts": {
         "dev": "next dev",
-        "build": "prisma generate && next build",
+        "build": "npx prisma generate && next build",
         "start": "next start",
         "lint": "next lint",
-        "prisma:generate": "prisma generate",
-        "prisma:validate": "prisma validate"
+        "prisma:generate": "npx prisma generate",
+        "prisma:validate": "npx prisma validate"
     },
     "dependencies": {
-        "@prisma/client": "^5.12.1",
-        "@sinclair/typebox": "^0.32.0",
-        "dotenv": "^16.4.5",
         "next": "14.2.3",
         "react": "18.3.1",
         "react-dom": "18.3.1",
-        "lucide-react": "^0.378.0"
+        "lucide-react": "^0.378.0",
+        "@prisma/client": "^5.12.1",
+        "prisma": "^5.12.1",
+        "@sinclair/typebox": "^0.32.0",
+        "dotenv": "^16.4.5"
     },
     "devDependencies": {
-        "@prisma/config": "^5.12.1",
         "@types/node": "^20.12.12",
         "@types/react": "^18.3.3",
         "@types/react-dom": "^18.3.0",
-        "prisma": "^5.12.1",
         "typescript": "^5.4.5"
     }
 }
