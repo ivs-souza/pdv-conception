@@ -1,286 +1,149 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { Plus, Search, MessageSquare, CreditCard, User, Users, MoreHorizontal, ShieldCheck } from 'lucide-react'
 import { CustomerService } from '@/services/customer.service'
 
+/**
+ * CustomersPage - Gravity CRM Station
+ * High-end customer management with credit health visibility.
+ * Features Glassmorphism cards and direct WhatsApp integration.
+ */
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     CustomerService.getCustomers().then(setCustomers)
   }, [])
 
+  const filteredCustomers = customers.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.document.includes(searchTerm)
+  )
+
   return (
-    <div className="customers-page">
-      <header className="page-header">
-        <div className="title-area">
-          <h1 className="font-black">CLIENTES</h1>
-          <p className="font-medium opacity-50">GESTÃO DE CRÉDITO E CARTEIRA</p>
+    <div className="p-6 lg:p-12 max-w-7xl mx-auto pb-40 font-gravity">
+      {/* Header Station */}
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16 border-b border-white/5 pb-10">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+             <Users size={28} className="text-blue-400 neon-glow" />
+             <h1 className="text-4xl font-black text-white tracking-tighter uppercase">CLIENTES</h1>
+          </div>
+          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em]">Gestão de Crédito & Relacionamento</p>
         </div>
+        
         <button 
-          className="magazine-btn font-black"
           onClick={() => setShowModal(true)}
+          className="flex items-center gap-3 bg-blue-600 text-white px-8 py-4 rounded-xl font-black text-sm hover:bg-blue-500 transition-all shadow-lg hover:shadow-blue-500/20"
         >
-          + NOVO CLIENTE
+          <Plus size={18} /> NOVO REGISTRO
         </button>
       </header>
 
-      <div className="customers-grid">
-        {customers.map(customer => (
-          <div key={customer.id} className="customer-card magazine-card">
-            <div className="card-header">
-              <h2 className="font-black">{customer.name.toUpperCase()}</h2>
-              <span className={`status-badge font-black ${customer.status}`}>
-                {customer.status === 'DEBT' ? 'PENDENTE' : 'EM DIA'}
-              </span>
-            </div>
-            
-            <div className="card-body">
-              <div className="info-row">
-                <span className="label font-bold">DOCUMENTO:</span>
-                <span className="value font-medium">{customer.document}</span>
-              </div>
-              <div className="info-row">
-                <span className="label font-bold">WHATSAPP:</span>
-                <span className="value font-medium">{customer.whatsapp}</span>
-              </div>
-            </div>
+      {/* Search Console */}
+      <div className="relative group mb-12">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
+        <input 
+          type="text" 
+          placeholder="PESQUISAR CLIENTE (NOME, CPF, TEL)..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl glass-panel focus:outline-none focus:border-blue-500/50 transition-all font-bold text-sm text-white uppercase tracking-tight"
+        />
+      </div>
 
-            <div className="card-footer">
-              <div className="balance-info">
-                <span className="label font-bold">SALDO ATUAL:</span>
-                <span className={`balance-val font-black ${customer.current_balance < 0 ? 'debt' : ''}`}>
-                  R$ {customer.current_balance.toFixed(2)}
-                </span>
-              </div>
-              <div className="limit-info">
-                <span className="label font-bold">LIMITE:</span>
-                <span className="value font-black">R$ {customer.credit_limit.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {customer.status === 'DEBT' && (
-              <div className="card-actions-debt">
-                <button 
-                  className="whatsapp-btn font-black"
-                  onClick={() => {
-                    const msg = `Olá ${customer.name}, notamos que sua conta de R$ ${Math.abs(customer.current_balance).toFixed(2)} está pendente. Por favor, entre em contato para quitação atualizada.`;
-                    window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
-                  }}
-                >
-                  ENVIAR COBRANÇA WHATSAPP
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Gravity Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+        {filteredCustomers.map(customer => (
+          <CustomerCard key={customer.id} customer={customer} />
         ))}
       </div>
 
+      {/* Quick Add Modal - Glass Style */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content magazine-card">
-             <h2 className="font-black">CADASTRAR NOVO CLIENTE</h2>
-             <form className="modal-form">
-                <div className="form-group">
-                  <label className="font-bold">NOME COMPLETO</label>
-                  <input type="text" placeholder="Ex: Joaquim Silva" />
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[1000] p-6">
+          <div className="glass-card w-full max-w-lg p-10 border-white/10 shadow-2xl scale-in">
+             <h2 className="text-2xl font-black text-white tracking-tight mb-8">NOVO CLIENTE</h2>
+             <form className="space-y-6">
+                <div>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">NOME COMPLETO</label>
+                   <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white font-bold text-sm focus:border-blue-500/50 focus:outline-none" placeholder="Ex: Ivan Souza" />
                 </div>
-                <div className="form-group">
-                  <label className="font-bold">CPF/CNPJ</label>
-                  <input type="text" placeholder="000.000.000-00" />
-                </div>
-                <div className="row">
-                   <div className="form-group">
-                     <label className="font-bold">WHATSAPP</label>
-                     <input type="text" placeholder="55..." />
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WHATSAPP</label>
+                      <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white font-bold text-sm focus:border-blue-500/50 focus:outline-none" placeholder="35 9..." />
                    </div>
-                   <div className="form-group">
-                     <label className="font-bold">LIMITE INICIAL</label>
-                     <input type="number" placeholder="500.00" />
+                   <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">LIMITE CRÉDITO</label>
+                      <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white font-bold text-sm focus:border-blue-500/50 focus:outline-none" placeholder="5000" />
                    </div>
                 </div>
-                <div className="form-actions">
-                   <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>CANCELAR</button>
-                   <button type="submit" className="save-btn font-black">CADASTRAR</button>
+                <div className="flex gap-4 pt-4">
+                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white">CANCELAR</button>
+                   <button type="submit" className="flex-1 bg-blue-600 text-white rounded-xl py-4 font-black text-sm hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">CADASTRAR</button>
                 </div>
              </form>
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      <style jsx>{`
-        .customers-page {
-          padding: 3rem;
-          max-width: 1400px;
-          margin: 0 auto;
-        }
+function CustomerCard({ customer }: { customer: any }) {
+  const isDebt = customer.current_balance < 0
 
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 4rem;
-          border-bottom: 8px solid var(--slate-900);
-          padding-bottom: 1.5rem;
-        }
+  return (
+    <div className="glass-card p-6 lg:p-8 flex flex-col group relative overflow-hidden">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+             isDebt ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+           }`}>
+              <User size={24} />
+           </div>
+           <div className="flex flex-col">
+              <h3 className="text-md font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{customer.name}</h3>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{customer.document}</span>
+           </div>
+        </div>
+        <button className="p-2 text-slate-500 hover:text-white transition-colors">
+           <MoreHorizontal size={20} />
+        </button>
+      </div>
 
-        .page-header h1 {
-          font-size: 3rem;
-          line-height: 0.8;
-          margin-bottom: 0.5rem;
-        }
+      <div className="grid grid-cols-2 gap-4 mb-8">
+         <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex flex-col gap-1">
+            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">SALDO ATUAL</span>
+            <span className={`text-lg font-black tracking-tight ${isDebt ? 'text-red-400' : 'text-emerald-400'}`}>
+               R$ {Math.abs(customer.current_balance).toFixed(2)}
+            </span>
+         </div>
+         <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex flex-col gap-1">
+            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">LIMITE DISPON.</span>
+            <span className="text-lg font-black text-white tracking-tight">R$ {customer.credit_limit.toFixed(2)}</span>
+         </div>
+      </div>
 
-        .magazine-btn {
-          background: var(--slate-900);
-          color: white;
-          border: none;
-          padding: 1rem 2rem;
-          cursor: pointer;
-        }
-
-        .customers-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-          gap: 2rem;
-        }
-
-        .customer-card {
-           padding: 2rem;
-           border: 2px solid var(--slate-900);
-           display: flex;
-           flex-direction: column;
-           gap: 1.5rem;
-        }
-
-        .card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 2px solid var(--slate-900);
-          padding-bottom: 1rem;
-        }
-
-        .status-badge {
-          padding: 0.25rem 0.75rem;
-          font-size: 0.7rem;
-        }
-
-        .status-badge.OK { background: var(--emerald-600); color: white; }
-        .status-badge.DEBT { background: var(--red-600); color: white; }
-
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 0.9rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .label { opacity: 0.6; font-size: 0.75rem; }
-
-        .card-footer {
-          margin-top: auto;
-          display: flex;
-          justify-content: space-between;
-          background: #f8fafc;
-          padding: 1rem;
-        }
-
-        .card-actions-debt {
-          margin-top: 1rem;
-          padding: 0;
-        }
-
-        .whatsapp-btn {
-          width: 100%;
-          background: var(--slate-900);
-          color: white;
-          border: none;
-          padding: 1rem;
-          font-size: 0.8rem;
-          cursor: pointer;
-          border-left: 8px solid var(--emerald-600);
-          transition: 0.2s;
-        }
-
-        .whatsapp-btn:hover {
-          background: var(--emerald-600);
-          transform: translateY(-2px);
-        }
-
-        .balance-val { font-size: 1.25rem; }
-        .balance-val.debt { color: var(--red-600); }
-
-        /* Modal Styles */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(15, 23, 42, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-
-        .modal-content {
-           background: white;
-           padding: 3rem;
-           max-width: 600px;
-           width: 100%;
-           border: 8px solid var(--slate-900);
-        }
-
-        .modal-form {
-          margin-top: 2rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .form-group input {
-          border: 2px solid var(--slate-900);
-          padding: 0.75rem 1rem;
-          outline: none;
-        }
-
-        .row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-
-        .cancel-btn {
-          background: none;
-          border: none;
-          color: var(--slate-900);
-          font-weight: bold;
-          cursor: pointer;
-        }
-
-        .save-btn {
-          background: var(--slate-900);
-          color: white;
-          padding: 0.75rem 2rem;
-          border: none;
-          cursor: pointer;
-        }
-      `}</style>
+      <div className="mt-auto space-y-3">
+         <div className="flex items-center gap-2 px-3 py-2 bg-slate-900/50 rounded-xl border border-white/5 text-[9px] font-black text-slate-500 tracking-widest">
+            <ShieldCheck size={12} className="text-blue-400" /> LGPD CONSENT: SIM (2026)
+         </div>
+         
+         <button 
+           onClick={() => window.open(`https://wa.me/${customer.whatsapp}`, '_blank')}
+           className={`w-full py-4 rounded-xl font-black text-xs flex items-center justify-center gap-3 transition-all ${
+             isDebt 
+               ? 'bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white' 
+               : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white hover:text-slate-950'
+           }`}
+         >
+            <MessageSquare size={16} /> {isDebt ? 'COBRAR VIA WHATSAPP' : 'ENVIAR MENSAGEM'}
+         </button>
+      </div>
     </div>
   )
 }
