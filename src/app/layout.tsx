@@ -36,11 +36,11 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon.png" />
       </head>
-      <body className="bg-slate-950 text-slate-50 antialiased overflow-x-hidden font-gravity">
-        <div id="gravity-root" className="flex min-h-screen">
+      <body className="antialiased font-gravity">
+        <div id="pdv-gravity-root" className="flex min-h-screen">
           <NavSidebar role={currentRole} />
           
-          <main className="flex-1 gravity-main transition-all duration-300 relative">
+          <main className="flex-1 gravity-main gravity-container relative transition-all duration-300">
             {children}
             <Footer />
           </main>
