@@ -4,16 +4,56 @@ import React from 'react'
 import { 
   BarChart, 
   TrendingUp, 
-  Package, 
   Layers 
 } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
+
+interface PerformanceChartsProps {
+  weeklyPerformance?: number[]
+  categoryRanking?: any[]
+}
 
 /**
- * PDV Conception v2.0 - PerformanceCharts
- * SVG Line Chart (Weekly) + CSS Bar Chart (Categories)
+ * Sapphire v3.1 - PerformanceCharts
+ * Dynamic SVG Bezier Chart (Weekly) + CSS Bar Chart (Categories)
  * Aesthetic: Sapphire SaaS Professional
  */
-export function PerformanceCharts() {
+export function PerformanceCharts({ 
+  weeklyPerformance = [0, 0, 0, 0, 0, 0, 0], 
+  categoryRanking = [] 
+}: PerformanceChartsProps) {
+  
+  // BI Logic: Generate smooth Bezier curve Path
+  const generatePath = (data: number[], isArea: boolean = false) => {
+    if (!data || data.length === 0) return ''
+    const max = Math.max(...data, 100)
+    const points = data.map((val, i) => ({
+      x: (i / (data.length - 1)) * 100,
+      y: 40 - (val / max) * 35 // Leave some padding at top
+    }))
+
+    let d = `M ${points[0].x} ${points[0].y}`
+    
+    // Smooth Bezier Curve logic
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i]
+      const p1 = points[i + 1]
+      const cp1x = p0.x + (p1.x - p0.x) / 2
+      const cp1y = p0.y
+      const cp2x = p0.x + (p1.x - p0.x) / 2
+      const cp2y = p1.y
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`
+    }
+
+    if (isArea) {
+      d += ` L 100 40 L 0 40 Z`
+    }
+    return d
+  }
+
+  const linePath = generatePath(weeklyPerformance)
+  const areaPath = generatePath(weeklyPerformance, true)
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Weekly Sales (SVG Line) */}
@@ -38,12 +78,12 @@ export function PerformanceCharts() {
              </defs>
              {/* Gradient Area */}
              <path 
-               d="M0 40 L0 32 L15 28 L30 35 L50 15 L70 20 L85 10 L100 12 L100 40 Z" 
+               d={areaPath} 
                className="fill-[url(#chart-grad)] transition-all duration-1000" 
              />
-             {/* Smooth Sapphire Line */}
+             {/* Smooth Sapphire Line (Bezier) */}
              <path 
-               d="M0 32 L15 28 L30 35 L50 15 L70 20 L85 10 L100 12" 
+               d={linePath} 
                className="stroke-blue-600 stroke-[2] fill-none stroke-linecap-round stroke-linejoin-round"
                style={{ filter: "drop-shadow(0 4px 6px rgba(37, 99, 235, 0.1))" }}
              />
@@ -71,10 +111,21 @@ export function PerformanceCharts() {
         </div>
 
         <div className="space-y-6">
-           <CategoryBar label="Bebidas" value={65} color="bg-blue-600" amount="R$ 1.250" />
-           <CategoryBar label="Vestuário" value={42} color="bg-blue-400" amount="R$ 840" />
-           <CategoryBar label="Eletrônicos" value={28} color="bg-slate-800" amount="R$ 420" />
-           <CategoryBar label="Acessórios" value={15} color="bg-slate-400" amount="R$ 180" />
+           {categoryRanking.length > 0 ? (
+             categoryRanking.map((cat, idx) => (
+               <CategoryBar 
+                 key={cat.label} 
+                 label={cat.label} 
+                 value={cat.percentage} 
+                 color={idx === 0 ? "bg-blue-600" : "bg-slate-400"} 
+                 amount={formatCurrency(cat.amount)} 
+               />
+             ))
+           ) : (
+             <div className="py-20 text-center text-slate-300 italic text-sm font-bold uppercase tracking-widest">
+                Nenhuma venda registrada
+             </div>
+           )}
         </div>
       </div>
     </div>

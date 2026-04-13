@@ -1,40 +1,91 @@
 'use client'
 
-import React, { useState } from 'react'
-import { X, Camera, Plus, Check } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Save, X, Plus, Camera, Check, Edit } from 'lucide-react'
 import { ProductService } from '@/services/product.service'
+import { CategoryService } from '@/services/category.service'
 import { useToast } from '@/components/layout/Toast'
 
 interface ProductModalProps {
   onClose: () => void
+  product?: any
 }
 
 /**
- * PDV Conception v2.0 - ProductModal
+ * Sapphire v2.0 - ProductModal
  * Professional form for cataloging items with SaaS precision.
  */
-export function ProductModal({ onClose }: ProductModalProps) {
-  const [loading, setLoading] = useState(false)
+export function ProductModal({ onClose, product }: ProductModalProps) {
+  const [isSaving, setIsSaving] = useState(false)
+  const modalRef = React.useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [onClose])
+
   const { showToast } = useToast()
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    category: 'Alimentos',
+    category: '',
     costPrice: '',
     salePrice: '',
     initialStock: '',
-    minStock: '',
-    customCategory: '',
+    minStock: '5',
+    description: '',
   })
   
+  const [categories, setCategories] = useState<any[]>([])
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  
-  const categories = ["Alimentos", "Bebidas", "Vestuário", "Eletrônicos", "Acessórios", "Outros"]
+
+  useEffect(() => {
+    if (product) {
+       setFormData({
+         ...product,
+         costPrice: String(product.costPrice || ''),
+         salePrice: String(product.salePrice ?? product.precoVenda ?? product.preco_venda ?? ''),
+         minStock: String(product.minStock || '5'),
+         initialStock: String(product.currentStock || '0')
+       })
+    }
+    fetchCategories()
+  }, [product])
+
+  const fetchCategories = async () => {
+    const cats = await CategoryService.getCategories()
+    setCategories(cats)
+    if (!product && cats.length > 0 && !formData.category) {
+      setFormData(prev => ({ ...prev, category: cats[0].name }))
+    }
+  }
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return
+    try {
+      const added = await CategoryService.addCategory(newCategoryName.trim())
+      setCategories(prev => [...prev, added])
+      setFormData(prev => ({ ...prev, category: added.name }))
+      setNewCategoryName('')
+      setIsAddingCategory(false)
+      showToast("Categoria adicionada!", "success")
+    } catch (e) {
+      showToast("Erro ao adicionar categoria", "error")
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    if (isSaving) return
     
+    setIsSaving(true)
     try {
       let imageUrl = ''
       if (imageFile) {
@@ -43,36 +94,44 @@ export function ProductModal({ onClose }: ProductModalProps) {
 
       const finalData = {
         ...formData,
-        category: formData.category === "Outros" ? formData.customCategory : formData.category,
         costPrice: Number(formData.costPrice),
         salePrice: Number(formData.salePrice),
         initialStock: Number(formData.initialStock),
         minStock: Number(formData.minStock),
-        imageUrl
+        imageUrl: imageUrl || product?.imageUrl || ''
       }
 
-      await ProductService.createProduct(finalData)
-      showToast("Produto criado com sucesso!", "success")
-      
+      if (product?.id) {
+        await ProductService.updateProduct(product.id, finalData)
+        showToast("Produto atualizado com sucesso!", "success")
+      } else {
+        await ProductService.createProduct(finalData)
+        showToast("Produto criado com sucesso!", "success")
+      }
       onClose()
-    } catch (e) {
-      showToast("Erro ao salvar produto.", "error")
+    } catch (err: any) {
+      console.error("Erro Catálogo:", err)
+      showToast(err.message || "Erro ao salvar produto.", "error")
     } finally {
-      setLoading(false)
+      setIsSaving(false)
     }
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+      <div ref={modalRef} className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
         <header className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                 <Plus size={22} />
+                 {product ? <Edit size={22} /> : <Plus size={22} />}
               </div>
               <div>
-                 <h3 className="text-lg font-black text-slate-900 leading-none">Novo Produto</h3>
-                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 block">Catalogação de Ativos</span>
+                 <h3 className="text-lg font-black text-slate-900 leading-none">
+                   {product ? 'Editar Produto' : 'Novo Produto'}
+                 </h3>
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 block">
+                   {product ? `Editando: ${product.name}` : 'Catalogação de Ativos'}
+                 </span>
               </div>
            </div>
            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors">
@@ -82,7 +141,6 @@ export function ProductModal({ onClose }: ProductModalProps) {
 
         <form onSubmit={handleSubmit} className="p-8 lg:p-12 space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column: Core Info */}
               <div className="space-y-6">
                  <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome do Produto</label>
@@ -96,45 +154,70 @@ export function ProductModal({ onClose }: ProductModalProps) {
                     />
                  </div>
 
-                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">SKU / Cód. Interno</label>
-                       <input 
-                         type="text" 
-                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-                         placeholder="LID-1234"
-                         value={formData.sku}
-                         onChange={e => setFormData({...formData, sku: e.target.value})}
-                       />
-                    </div>
-                    <div>
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Categoria</label>
-                       <select 
-                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-                         value={formData.category}
-                         onChange={e => setFormData({...formData, category: e.target.value})}
-                       >
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                       </select>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">SKU / Cód. Interno</label>
+                    <input 
+                      type="text" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
+                      placeholder="LID-1234"
+                      value={formData.sku}
+                      onChange={e => setFormData({...formData, sku: e.target.value})}
+                    />
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Categoria</label>
+                    <div className="flex gap-2">
+                       {isAddingCategory ? (
+                          <div className="flex-1 flex gap-2">
+                             <input 
+                               type="text" 
+                               placeholder="Nova categoria..."
+                               value={newCategoryName}
+                               onChange={e => setNewCategoryName(e.target.value)}
+                               className="flex-1 px-4 py-2 bg-slate-50 border border-blue-200 rounded-lg text-xs font-bold focus:outline-none"
+                               autoFocus
+                             />
+                             <button 
+                               type="button"
+                               onClick={handleAddCategory}
+                               className="p-2 bg-blue-600 text-white rounded-lg"
+                             >
+                                <Save size={14} />
+                             </button>
+                             <button 
+                               type="button"
+                               onClick={() => setIsAddingCategory(false)}
+                               className="p-2 bg-slate-200 text-slate-400 rounded-lg"
+                             >
+                                <X size={14} />
+                             </button>
+                          </div>
+                       ) : (
+                         <>
+                            <select 
+                              value={formData.category}
+                              onChange={e => setFormData({...formData, category: e.target.value})}
+                              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-500 transition-all appearance-none"
+                            >
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                              ))}
+                            </select>
+                            <button 
+                              type="button"
+                              onClick={() => setIsAddingCategory(true)}
+                              className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"
+                            >
+                               <Plus size={18} />
+                            </button>
+                         </>
+                       )}
                     </div>
                  </div>
 
-                 {formData.category === "Outros" && (
-                    <div className="animate-fade-in">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nome da Categoria Customizada</label>
-                       <input 
-                         type="text" 
-                         className="w-full bg-blue-50/50 border border-blue-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-                         placeholder="Nova categoria"
-                         value={formData.customCategory}
-                         onChange={e => setFormData({...formData, customCategory: e.target.value})}
-                       />
-                    </div>
-                 )}
-              </div>
-
-              {/* Right Column: Financials & Stock */}
-              <div className="space-y-6">
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Preço de Custo (R$)</label>
@@ -208,11 +291,11 @@ export function ProductModal({ onClose }: ProductModalProps) {
            <div className="flex items-center justify-end gap-6 pt-4 border-t border-slate-50">
               <button type="button" onClick={onClose} className="text-sm font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest">Cancelar</button>
               <button 
-                disabled={loading}
+                disabled={isSaving}
                 type="submit" 
                 className="btn-sapphire px-10 py-4 uppercase tracking-widest flex items-center gap-3 disabled:opacity-50"
               >
-                 {loading ? "Salvando..." : "Salvar Produto"}
+                 {isSaving ? "Salvando..." : (product ? "Atualizar Produto" : "Salvar Produto")}
               </button>
            </div>
         </form>

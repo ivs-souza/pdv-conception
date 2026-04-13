@@ -10,7 +10,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 /**
- * PDV Conception v2.0 - ProductService
+ * Sapphire v2.0 - ProductService
  * Core logic for Inventory Management and Product Assets.
  */
 export const ProductService = {
@@ -18,6 +18,7 @@ export const ProductService = {
    * Adds a new product to the Firestore collection.
    */
   async createProduct(data: any) {
+    if (!db) throw new Error("Database not connected")
     try {
       const productRef = collection(db, "produtos")
       const docRef = await addDoc(productRef, {
@@ -37,6 +38,7 @@ export const ProductService = {
    * Updates an existing product.
    */
   async updateProduct(id: string, data: any) {
+    if (!db) throw new Error("Database not connected")
     try {
       const productRef = doc(db, "produtos", id)
       await updateDoc(productRef, {
@@ -53,6 +55,7 @@ export const ProductService = {
    * Deletes a product.
    */
   async deleteProduct(id: string) {
+    if (!db) throw new Error("Database not connected")
     try {
       const productRef = doc(db, "produtos", id)
       await deleteDoc(productRef)

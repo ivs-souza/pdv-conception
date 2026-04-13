@@ -11,7 +11,7 @@ interface InsightHeaderProps {
 }
 
 /**
- * PDV Conception v2.0 - InsightHeader
+ * Sapphire v2.0 - InsightHeader
  * The "Brain" of the command center.
  * Features the "Insight do Dia" and urgency pulse for low stock.
  */

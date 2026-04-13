@@ -12,6 +12,7 @@ import {
   Send
 } from 'lucide-react'
 import { AnalyticsService } from '@/services/analytics.service'
+import { SettingsService } from '@/services/settings.service'
 import { InsightHeader } from '@/components/dashboard/InsightHeader'
 import { PerformanceCharts } from '@/components/dashboard/PerformanceCharts'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
@@ -21,12 +22,19 @@ import { DebtorsList } from '@/components/dashboard/DebtorsList'
 import { formatCurrency } from '@/utils/format'
 
 /**
- * PDV Conception v2.1 - The Command Center
+ * Sapphire v2.1 - The Command Center
  * Hub de Inteligência, Fluxo de Caixa e Resultados.
  */
 export default function DashboardHome() {
   const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH'>('MONTH')
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<any>({
+    totalFaturamento: 0,
+    totalLucro: 0,
+    ticketMedio: 0,
+    lowStockCount: 0,
+    vendasCount: 0,
+    byMethod: { DINHEIRO: 0, ELECTRONIC: 0, FIADO: 0 }
+  })
   const [recentSales, setRecentSales] = useState<any[]>([])
   const [debtors, setDebtors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,32 +52,42 @@ export default function DashboardHome() {
 
   useEffect(() => {
     fetchFullData()
+    
+    // Safety Fallback: Force loading to false after 5 seconds to prevent UI freeze
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoading(false)
+        console.warn("⏱️ Sync Timeout: Verifique sua conexão ou permissões do banco.")
+      }
+    }, 5000)
+
     const unsubscribe = AnalyticsService.subscribeToRecentSales((sales) => {
       setRecentSales(sales)
     })
-    return () => unsubscribe()
+    
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
   }, [period])
 
-  const handleCloseDay = () => {
+  const handleCloseDay = async () => {
     if (!stats) return
-    const message = encodeURIComponent(
-      `📊 *RESUMO DE FECHAMENTO - PDV CONCEPTION*\n` +
-      `📅 Período: ${period === 'TODAY' ? 'Hoje' : period === 'WEEK' ? 'Últimos 7 dias' : 'Este Mês'}\n\n` +
-      `💵 *Dinheiro:* R$ ${stats.byMethod.DINHEIRO.toFixed(2)}\n` +
-      `💳 *Digital (PIX/Cartão):* R$ ${stats.byMethod.ELECTRONIC.toFixed(2)}\n` +
-      `📒 *Fiado:* R$ ${stats.byMethod.FIADO.toFixed(2)}\n\n` +
-      `💰 *TOTAL: R$ ${stats.totalFaturamento.toFixed(2)}*\n` +
-      `📈 *Lucro Est.: R$ ${stats.totalLucro.toFixed(2)}*\n\n` +
-      `✅ Conferência finalizada via Sapphire SaaS.`
-    )
+    const settings = await SettingsService.getSettings()
+    
+    // Summary building for the [Resumo] placeholder
+    const resumo = `💵 Dinheiro: R$ ${(stats?.byMethod?.DINHEIRO || 0).toFixed(2)} | 💳 Digital: R$ ${(stats?.byMethod?.ELECTRONIC || 0).toFixed(2)} | 📒 Fiado: R$ ${(stats?.byMethod?.FIADO || 0).toFixed(2)} | 💰 TOTAL: R$ ${(stats?.totalFaturamento || 0).toFixed(2)}`
+    
+    let messageBody = settings.store.whatsappTemplate
+      .replace('[Nome do Cliente]', 'Administrador')
+      .replace('[Nome da Loja]', settings.store.name)
+      .replace('[Resumo]', resumo)
+
+    const message = encodeURIComponent(messageBody)
     window.open(`https://wa.me/?text=${message}`, '_blank')
   }
 
-  if (!stats && loading) return (
-     <div className="h-screen flex items-center justify-center text-blue-600 font-bold uppercase tracking-widest animate-pulse">
-        Sincronizando BI...
-     </div>
-  )
+/* Removed loading guard to support Optimistic UI (rendering 0/--- immediately) */
 
   return (
     <div className="space-y-10 animate-fade-in pb-20">
@@ -104,42 +122,45 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPIItem 
            label="Faturamento Total" 
-           value={formatCurrency(stats.totalFaturamento)} 
+           value={formatCurrency(stats?.totalFaturamento)} 
            sublabel="Receita bruta no período"
            icon={<DollarSign size={20} />} 
            color="blue"
         />
         <KPIItem 
            label="Lucro Estimado" 
-           value={formatCurrency(stats.totalLucro)} 
-           sublabel="Margem real (v2.1)"
+           value={formatCurrency(stats?.totalLucro)} 
+           sublabel="Margem real (v3.1)"
            icon={<TrendingUp size={20} />} 
            color="emerald"
         />
         <KPIItem 
-           label="Frequência" 
-           value={`${stats.vendasCount} Vendas`} 
-           sublabel={`Média ${formatCurrency(stats.ticketMedio)}`}
+           label="Segmento Campeão" 
+           value={stats?.topCategory || '---'} 
+           sublabel={`${stats?.vendasCount || 0} vendas realizadas`}
            icon={<Target size={20} />} 
            color="slate"
         />
         <KPIItem 
            label="Estoque Crítico" 
-           value={`${stats.lowStockCount} Itens`} 
+           value={`${stats?.lowStockCount || 0} Itens`} 
            sublabel="Abaixo do ressuprimento"
            icon={<AlertTriangle size={20} />} 
-           color={stats.lowStockCount > 5 ? "red" : "orange"}
+           color={(stats?.lowStockCount || 0) > 5 ? "red" : "orange"}
         />
       </div>
 
       {/* Cash Flow Station */}
-      <CashFlowGrid data={stats.byMethod} />
+      <CashFlowGrid data={stats?.byMethod || { DINHEIRO: 0, ELECTRONIC: 0, FIADO: 0 }} />
 
       {/* Analytics Station (Charts & Feed) */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
          <div className="xl:col-span-3 space-y-8">
-            <MethodComposition data={stats.byMethod} />
-            <PerformanceCharts />
+            <MethodComposition data={stats?.byMethod || { DINHEIRO: 0, ELECTRONIC: 0, FIADO: 0 }} />
+            <PerformanceCharts 
+              weeklyPerformance={stats?.weeklyPerformance}
+              categoryRanking={stats?.categoryRanking}
+            />
          </div>
          <div className="xl:col-span-1 space-y-8">
             <DebtorsList debtors={debtors} />

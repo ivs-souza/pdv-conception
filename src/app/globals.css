@@ -1,8 +1,6 @@
-/**
- * PDV Conception v2.0 - Sapphire Clean UI
- * Design Language: Modern SaaS | Ice Gray & Sapphire Blue
- * Author: Senior Software Engineer & UI Designer
- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -16,6 +14,9 @@
   --slate-muted: #64748b;
   --border-subtle: #e2e8f0;
   --radius-premium: 12px;
+  --foreground-rgb: 15, 23, 42;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 248, 250, 252;
 }
 
 * {
@@ -25,11 +26,27 @@
 }
 
 body {
-  background-color: var(--bg-ice);
-  color: var(--sapphire-blue);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', sans-serif;
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
   min-height: 100vh;
+  font-weight: 300; /* Default Light (300) for premium feel */
   -webkit-font-smoothing: antialiased;
+}
+
+/* Titles: Semibold (600) + Negative Tracking (-0.02em) */
+h1, h2, h3, h4, h5, h6, .font-black {
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+}
+
+b, strong, .font-bold {
+  font-weight: 600;
 }
 
 /* Layout Grid */

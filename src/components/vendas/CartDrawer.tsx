@@ -28,7 +28,7 @@ interface CartDrawerProps {
 }
 
 /**
- * PDV Conception v2.0 - CartDrawer
+ * Sapphire v2.0 - CartDrawer
  * Feature: Lateral checkout fixed on Desktop.
  * Interaction: Scale-up bounce animation on add.
  */
@@ -55,6 +55,7 @@ export function CartDrawer({
       return
     }
 
+    if (!db) return
     try {
       const q = query(
         collection(db, "clientes"), 
@@ -150,9 +151,9 @@ export function CartDrawer({
             <div className="flex flex-col gap-1">
               <p className="text-xs font-bold text-slate-800 uppercase tracking-tight line-clamp-1">{item.name}</p>
               <div className="flex items-center gap-2">
-                 <span className="text-[10px] font-bold text-slate-400">R$ {item.price.toFixed(2)}</span>
+                 <span className="text-[10px] font-bold text-slate-400">R$ {(item.price || 0).toFixed(2)}</span>
                  <div className="h-1 w-1 rounded-full bg-slate-200" />
-                 <span className="text-[10px] font-black text-blue-600">R$ {(item.price * item.qty).toFixed(2)}</span>
+                 <span className="text-[10px] font-black text-blue-600">R$ {((item.price || 0) * (item.qty || 0)).toFixed(2)}</span>
               </div>
               
               {/* Qty Controls */}
@@ -193,17 +194,17 @@ export function CartDrawer({
         <div className="space-y-2">
            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
               <span>Subtotal</span>
-              <span>R$ {subtotal.toFixed(2)}</span>
+              <span>R$ {(subtotal || 0).toFixed(2)}</span>
            </div>
            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
               <span>Taxas (5%)</span>
-              <span>R$ {tax.toFixed(2)}</span>
+              <span>R$ {(tax || 0).toFixed(2)}</span>
            </div>
         </div>
 
         <div className="flex justify-between items-center py-4 border-y border-dashed border-slate-200">
            <span className="text-sm font-black text-slate-900 uppercase tracking-widest">Total Geral</span>
-           <span className="text-2xl font-black text-blue-600 tracking-tighter">R$ {(subtotal + tax).toFixed(2)}</span>
+           <span className="text-2xl font-black text-blue-600 tracking-tighter">R$ {(subtotal + tax || 0).toFixed(2)}</span>
         </div>
 
         <button 

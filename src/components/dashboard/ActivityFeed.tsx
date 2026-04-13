@@ -8,7 +8,7 @@ interface ActivityFeedProps {
 }
 
 /**
- * PDV Conception v2.0 - ActivityFeed
+ * Sapphire v2.0 - ActivityFeed
  * Last 5 Transactions Table for the Command Center.
  */
 export function ActivityFeed({ sales }: ActivityFeedProps) {
@@ -39,7 +39,7 @@ export function ActivityFeed({ sales }: ActivityFeedProps) {
 
             <div className="text-right">
               <div className="flex items-center justify-end gap-1.5 text-slate-900 mb-0.5">
-                 <span className="text-sm font-black tracking-tight">R$ {sale.total?.toFixed(2)}</span>
+                 <span className="text-sm font-black tracking-tight">R$ {(sale.total || 0).toFixed(2)}</span>
                  <ArrowUpRight size={14} className="text-emerald-500" />
               </div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">

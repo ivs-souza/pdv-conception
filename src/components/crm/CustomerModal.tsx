@@ -11,12 +11,23 @@ interface CustomerModalProps {
 }
 
 /**
- * PDV Conception v2.0 - CustomerModal
+ * Sapphire v2.0 - CustomerModal
  * High-speed CRM registration for counter service.
  */
 export function CustomerModal({ onClose, onSuccess }: CustomerModalProps) {
-  const [loading, setLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const modalRef = React.useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
+
+  React.useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [onClose])
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -27,23 +38,26 @@ export function CustomerModal({ onClose, onSuccess }: CustomerModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    if (isSaving) return
     
+    setIsSaving(true)
     try {
       const newCustomer = await CustomerService.createCustomer(formData)
-      if (onSuccess) onSuccess(newCustomer)
       showToast("Cliente cadastrado com sucesso!", "success")
+      
+      if (onSuccess) onSuccess(newCustomer)
       onClose()
-    } catch (e) {
-      showToast("Erro ao cadastrar cliente.", "error")
+    } catch (err: any) {
+      console.error("Erro CRM:", err)
+      showToast(err.message || "Erro ao cadastrar cliente.", "error")
     } finally {
-      setLoading(false)
+      setIsSaving(false)
     }
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+      <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
         <header className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -125,11 +139,11 @@ export function CustomerModal({ onClose, onSuccess }: CustomerModalProps) {
            <div className="flex items-center justify-end gap-6 pt-6 border-t border-slate-50">
               <button type="button" onClick={onClose} className="text-sm font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest">Cancelar</button>
               <button 
-                disabled={loading}
+                disabled={isSaving}
                 type="submit" 
                 className="btn-sapphire px-10 py-4 uppercase tracking-widest flex items-center gap-3 disabled:opacity-50"
               >
-                 {loading ? "Salvando..." : "Salvar Cliente"} <Check size={18} />
+                 {isSaving ? "Salvando..." : "Salvar Cliente"} <Check size={18} />
               </button>
            </div>
         </form>

@@ -7,19 +7,29 @@ interface ProductCardProps {
   product: {
     id: string
     name: string
-    price: number
-    stock: number
+    salePrice?: number
+    precoVenda?: number
+    preco_venda?: number
+    currentStock: number
     category: string
   }
   onAdd: (product: any) => void
 }
 
 /**
- * PDV Conception v2.0 - ProductCard
+ * Sapphire v3.0 - ProductCard
  * Aesthetic: Sapphire Clean UI
- * Features: Stock badge, Price highlighting, Hover lift
+ * Features: Robust price mapping, Stock alerts
  */
 export function ProductCard({ product, onAdd }: ProductCardProps) {
+  // Robust price conversion (v3.0 Safeguard)
+  const rawPrice = product.precoVenda ?? product.preco_venda ?? product.salePrice
+  const price = Number(rawPrice || 0)
+  
+  if (rawPrice === undefined) {
+    console.warn(`⚠️ Produto [${product.name}] sem preço definido no Firestore.`, product)
+  }
+
   return (
     <div className="premium-card group relative">
       {/* Category Badge */}
@@ -38,8 +48,8 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       <div className="space-y-1 mb-6">
         <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{product.name}</h3>
         <div className="flex items-center justify-between">
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estoque: {product.stock} un</span>
-           {product.stock < 5 && (
+           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estoque: {product.currentStock} un</span>
+           {product.currentStock < 5 && (
              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
            )}
         </div>
@@ -50,12 +60,12 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         <div className="flex flex-col">
           <span className="text-[10px] font-bold text-slate-400 uppercase leading-none">Preço</span>
           <span className="text-lg font-black text-slate-900 tracking-tight">
-            R$ {product.price.toFixed(2)}
+            R$ {price.toFixed(2)}
           </span>
         </div>
         <button 
-          onClick={() => onAdd(product)}
-          className="w-10 h-10 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95"
+          onClick={() => onAdd({ ...product, price })}
+          className="w-10 h-10 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-100"
         >
           <Plus size={20} />
         </button>

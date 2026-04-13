@@ -11,7 +11,7 @@ interface MethodCompositionProps {
 }
 
 /**
- * PDV Conception v2.1 - MethodComposition
+ * Sapphire v2.1 - MethodComposition
  * Horizontal percentage distribution of sales checkout.
  */
 export function MethodComposition({ data }: MethodCompositionProps) {

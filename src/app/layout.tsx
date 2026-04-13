@@ -1,19 +1,19 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import NavSidebar from '@/components/layout/NavSidebar'
+import { Sidebar } from '@/components/layout/Sidebar'
 import { ToastProvider } from '@/components/layout/Toast'
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 
-const inter = Inter({ subsets: ['latin'] })
+
 
 export const metadata: Metadata = {
-  title: 'PDV Conception v2.0 | SaaS Premium',
-  description: 'Sistema de Gestão Profissional Modular',
+  title: 'Sapphire | Intelligent Retail',
+  description: 'Sistema de Gestão Profissional Modular Sapphire',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'PDV Conception',
+    title: 'Sapphire',
   },
 }
 
@@ -36,15 +36,17 @@ export default function RootLayout({
          <link rel="manifest" href="/manifest.json" />
          <meta name="theme-color" content="#0F172A" />
       </head>
-      <body className={inter.className}>
-        <ToastProvider>
-          <div className="flex bg-[#F8FAFC] min-h-screen text-slate-900">
-            <NavSidebar />
-            <main className="flex-1 p-8 lg:p-12 overflow-x-hidden">
-              {children}
-            </main>
-          </div>
-        </ToastProvider>
+      <body>
+        <ErrorBoundary>
+          <ToastProvider>
+            <div className="flex bg-[#F8FAFC] min-h-screen text-slate-900">
+              <Sidebar />
+              <main className="flex-1 p-8 lg:p-12 overflow-x-hidden">
+                {children}
+              </main>
+            </div>
+          </ToastProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

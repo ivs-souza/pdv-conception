@@ -15,25 +15,19 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase
 import { formatCurrency } from '@/utils/format'
 import { useToast } from '@/components/layout/Toast'
 
-/**
- * PDV Conception v2.0 - InventoryTable
- * Features: Real-time Firestore sync, Stock Alerts, and Margin Analysis.
- */
-export function InventoryTable() {
-  const [products, setProducts] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
-  const { showToast } = useToast()
+interface InventoryTableProps {
+  products: any[]
+  loading: boolean
+  onEdit: (product: any) => void
+}
 
-  useEffect(() => {
-    const q = query(collection(db, "produtos"), orderBy("name", "asc"))
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const docs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))
-      setProducts(docs)
-      setLoading(false)
-    })
-    return () => unsubscribe()
-  }, [])
+/**
+ * Sapphire v2.0 - InventoryTable
+ * Features: Real-time Firestore sync (via Props), Stock Alerts, and Margin Analysis.
+ */
+export function InventoryTable({ products, loading, onEdit }: InventoryTableProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const { showToast } = useToast()
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -140,7 +134,10 @@ export function InventoryTable() {
                     </td>
                     <td className="px-8 py-5">
                        <div className="flex items-center justify-end gap-3">
-                          <button className="p-2 text-slate-300 hover:text-blue-600 transition-colors">
+                          <button 
+                            onClick={() => onEdit(product)}
+                            className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                          >
                              <Edit size={18} />
                           </button>
                           <button 

@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore'
 
 /**
- * PDV Conception v2.0 - CustomerService
+ * Sapphire v2.0 - CustomerService
  * Relationships Management and Lifetime Value (LTV) Engine.
  */
 export const CustomerService = {
@@ -22,6 +22,7 @@ export const CustomerService = {
    * Registers a new customer.
    */
   async createCustomer(data: any) {
+    if (!db) throw new Error("Firebase not configured")
     try {
       const customerRef = collection(db, "clientes")
       const docRef = await addDoc(customerRef, {
@@ -41,6 +42,7 @@ export const CustomerService = {
    * Increments the customer's debt balance.
    */
   async incrementDebt(clientId: string, amount: number) {
+    if (!db) return
     try {
       const customerRef = doc(db, "clientes", clientId)
       await updateDoc(customerRef, {
@@ -57,6 +59,7 @@ export const CustomerService = {
    * Fetches total spending and last purchase date for a specific customer.
    */
   async getCustomerLTV(clientId: string) {
+    if (!db) return { totalSpent: 0, lastPurchase: null, salesCount: 0 }
     try {
       const salesQuery = query(
         collection(db, "vendas"), 
@@ -65,7 +68,7 @@ export const CustomerService = {
       )
       
       const snapshot = await getDocs(salesQuery)
-      const sales = snapshot.docs.map(doc => doc.data())
+      const sales = snapshot.docs.map((doc: any) => doc.data())
       
       const totalSpent = sales.reduce((acc: number, s: any) => acc + (s.total || 0), 0)
       const lastPurchase = sales.length > 0 ? (sales[0].createdAt?.toDate() || null) : null

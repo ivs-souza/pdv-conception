@@ -1,17 +1,79 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Package, Download } from 'lucide-react'
 import { InventoryTable } from '@/components/inventory/InventoryTable'
 import { ProductModal } from '@/components/inventory/ProductModal'
+import { db } from '@/utils/firebase'
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { formatCurrency } from '@/utils/format'
+import { useToast } from '@/components/layout/Toast'
 
 /**
- * PDV Conception v2.0 - Estoque (Inventory)
+ * Sapphire v2.0 - Estoque (Inventory)
  * Aesthetic: Clean & Clear Premium
  * Features: Real-time stock tracking and Profit Margin analysis.
  */
 export default function EstoquePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null)
+  const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
+
+  // Centralized Intelligence Listener
+  useEffect(() => {
+    if (!db) return
+    const q = query(collection(db, "produtos"), orderBy("name", "asc"))
+    
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoading(false)
+        console.warn("⏱️ Stock Sync Timeout: Verifique as permissões do Firebase.");
+      }
+    }, 5000)
+
+    const unsubscribe = onSnapshot(q, 
+      (snapshot: any) => {
+        const docs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))
+        setProducts(docs)
+        setLoading(false)
+        clearTimeout(timer)
+      },
+      (error: any) => {
+        console.error("🔥 Firestore Permission Error in Estoque:", error);
+        showToast("Erro de permissão no banco de dados.", "error");
+        setLoading(false)
+        clearTimeout(timer)
+      }
+    )
+    return () => {
+      unsubscribe()
+      clearTimeout(timer)
+    }
+  }, [])
+
+  const handleEdit = (product: any) => {
+    setSelectedProduct(product)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedProduct(null)
+  }
+
+  // Real-time Business Logic Calculations
+  const stats = useMemo(() => {
+    const totalValue = products.reduce((acc, p) => acc + ((p.costPrice || 0) * (p.currentStock || 0)), 0)
+    const activeAlerts = products.filter(p => (p.currentStock || 0) <= (p.minStock || 0)).length
+    
+    return {
+      totalValue,
+      totalSkus: products.length,
+      activeAlerts
+    }
+  }, [products])
 
   return (
     <div className="space-y-10 animate-fade-in pb-20">
@@ -32,7 +94,10 @@ export default function EstoquePage() {
               <Download size={16} /> Relatórios
            </button>
            <button 
-             onClick={() => setIsModalOpen(true)}
+             onClick={() => {
+               setSelectedProduct(null)
+               setIsModalOpen(true)
+             }}
              className="btn-sapphire px-6 py-3.5 shadow-xl shadow-blue-500/10"
            >
               <Plus size={18} /> Adicionar Produto
@@ -43,40 +108,49 @@ export default function EstoquePage() {
       {/* Stats Summary Panel */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <div className="premium-card p-6 flex items-center gap-5">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <div className={`p-3 bg-emerald-50 text-emerald-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
                <TrendingUpShadow />
             </div>
             <div>
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor do Inventário</p>
-               <h4 className="text-xl font-black text-slate-900 tracking-tight">R$ 145.200,30</h4>
+               <h4 className="text-xl font-black text-slate-900 tracking-tight">
+                  {loading ? 'R$ ---' : formatCurrency(stats.totalValue)}
+               </h4>
             </div>
          </div>
          <div className="premium-card p-6 flex items-center gap-5">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <div className={`p-3 bg-blue-50 text-blue-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
                <Package size={20} />
             </div>
             <div>
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Itens SKU Únicos</p>
-               <h4 className="text-xl font-black text-slate-900 tracking-tight">342 Produtos</h4>
+               <h4 className="text-xl font-black text-slate-900 tracking-tight">
+                  {loading ? '---' : stats.totalSkus} Produtos
+               </h4>
             </div>
          </div>
          <div className="premium-card p-6 flex items-center gap-5">
-            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+            <div className={`p-3 bg-red-50 text-red-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
                <AlertCircleShadow />
             </div>
             <div>
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Urgência de Reposição</p>
-               <h4 className="text-xl font-black text-red-600 tracking-tight">12 Alertas</h4>
+               <h4 className={`text-xl font-black tracking-tight ${stats.activeAlerts > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                  {loading ? '---' : stats.activeAlerts} Alertas
+               </h4>
             </div>
          </div>
       </div>
 
       {/* Table Interface */}
-      <InventoryTable />
+      <InventoryTable products={products} loading={loading} onEdit={handleEdit} />
 
       {/* Modals Zone */}
       {isModalOpen && (
-        <ProductModal onClose={() => setIsModalOpen(false)} />
+        <ProductModal 
+          product={selectedProduct} 
+          onClose={handleCloseModal} 
+        />
       )}
     </div>
   )

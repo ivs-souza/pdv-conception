@@ -10,15 +10,23 @@ import {
   Users, 
   Calculator,
   Settings,
-  Store
+  Gem
 } from 'lucide-react'
+import { SettingsService } from '@/services/settings.service'
 
 /**
- * PDV Conception v2.0 - Sapphire Sidebar
- * Modern SaaS lateral navigation with Sapphire Blue branding.
+ * Sapphire v3.2 - SaleService
+ * Logic: Handles sale registration and Firestore persistence.
  */
 export function Sidebar() {
   const pathname = usePathname()
+  const [companyName, setCompanyName] = React.useState('Sapphire')
+
+  React.useEffect(() => {
+    SettingsService.getSettings().then(settings => {
+      setCompanyName(settings.store?.name || 'Sapphire')
+    })
+  }, [])
 
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
@@ -26,7 +34,7 @@ export function Sidebar() {
     { name: 'Estoque', icon: <Package size={20} />, path: '/estoque' },
     { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
     { name: 'Taxas', icon: <Calculator size={20} />, path: '/taxas' },
-    { name: 'Configurações', icon: <Settings size={20} />, path: '/config' }
+    { name: 'Configurações', icon: <Settings size={20} />, path: '/configuracoes' }
   ]
 
   return (
@@ -34,12 +42,16 @@ export function Sidebar() {
       {/* Brand Station */}
       <div className="px-8 pb-12">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-            <Store size={22} />
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 shrink-0">
+            <Gem size={22} />
           </div>
-          <div>
-            <h1 className="font-extrabold text-lg text-white tracking-tight leading-none uppercase">Conception</h1>
-            <span className="text-[10px] font-black text-blue-400 tracking-[0.2em] mt-1.5 block">SaaS v2.0</span>
+          <div className="flex flex-col min-w-0">
+            <h1 className="font-black text-lg text-white tracking-widest uppercase leading-none">
+              SAPPHIRE
+            </h1>
+            <span className="text-[10px] font-light text-slate-400 mt-1 tracking-tight truncate uppercase">
+              {companyName}
+            </span>
           </div>
         </div>
       </div>

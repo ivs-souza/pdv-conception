@@ -13,7 +13,7 @@ interface CashFlowGridProps {
 }
 
 /**
- * PDV Conception v2.1 - CashFlowGrid
+ * Sapphire v2.1 - CashFlowGrid
  * Granular receivables view.
  */
 export function CashFlowGrid({ data }: CashFlowGridProps) {

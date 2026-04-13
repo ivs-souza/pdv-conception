@@ -4,7 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 /**
- * PDV Conception v2.0 - Firebase Connector
+ * Sapphire v2.0 - Firebase Connector
  * Security: Strict usage of Environment Variables via process.env.NEXT_PUBLIC_
  */
 const firebaseConfig = {
@@ -16,14 +16,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+const isConfigured = !!firebaseConfig.apiKey;
+
 // Singleton pattern for Firebase initialization with environment guard
-const app = getApps().length === 0 && firebaseConfig.apiKey 
+// Offline persistence is DISABLED by default to avoid conflicts with static export
+const app = (getApps().length === 0 && isConfigured)
   ? initializeApp(firebaseConfig) 
   : (getApps()[0] || null);
 
-// Exporting services only if app exists to avoid SSR crashes
-export const db = app ? getFirestore(app) : ({} as any);
-export const auth = app ? getAuth(app) : ({} as any);
-export const storage = app ? getStorage(app) : ({} as any);
+// Exporting services only if app exists. 
+// Consumers MUST check if these are null before use.
+export const db = app ? getFirestore(app) : null;
+export const auth = app ? getAuth(app) : null;
+export const storage = app ? getStorage(app) : null;
+
+if (db) {
+  console.log("🔥 Firestore Initialized:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+} else {
+  console.warn("⚠️ Firestore failed to initialize. Check environment variables.");
+}
 
 export default app;

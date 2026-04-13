@@ -20,7 +20,7 @@ interface SaleReceiptProps {
 }
 
 /**
- * PDV Conception v2.0 - SaleReceipt
+ * Sapphire v2.0 - SaleReceipt
  * Professional digital receipt optimized for screen, print, and WhatsApp.
  */
 export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClose }: SaleReceiptProps) {
@@ -30,7 +30,7 @@ export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClo
     const itemsList = items.map(i => `${i.qty}x ${i.name}`).join(', ')
     const methodStr = paymentInfo.method === 'FIADO' ? 'Fiado/Caderneta' : paymentInfo.method
     
-    const message = `${greeting} aqui está o resumo da sua compra na PDV Conception: ${itemsList}. Total: R$ ${total.toFixed(2)}. Pago via: ${methodStr}. Obrigado!`
+    const message = `${greeting} aqui está o resumo da sua compra na Sapphire: ${itemsList}. Total: R$ ${(total || 0).toFixed(2)}. Pago via: ${methodStr}. Obrigado!`
     
     return encodeURIComponent(message)
   }
@@ -67,7 +67,7 @@ export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClo
                  {items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
                        <span className="font-medium text-slate-600">{item.qty}x {item.name}</span>
-                       <span className="font-black text-slate-900">R$ {(item.price * item.qty).toFixed(2)}</span>
+                       <span className="font-black text-slate-900">R$ {((item.price || 0) * (item.qty || 0)).toFixed(2)}</span>
                     </div>
                  ))}
               </div>
@@ -77,18 +77,18 @@ export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClo
            <div className="pt-6 border-t border-dashed border-slate-200 space-y-3">
               <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
                  <span>Subtotal</span>
-                 <span>R$ {total.toFixed(2)}</span>
+                 <span>R$ {(total || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg font-black text-slate-900">
                  <span>TOTAL PAGO</span>
-                 <span className="text-blue-600">R$ {total.toFixed(2)}</span>
+                 <span className="text-blue-600">R$ {(total || 0).toFixed(2)}</span>
               </div>
               <div className="pt-2">
                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Meio de Pagamento</span>
                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
                     <span className="bg-slate-100 px-2 py-1 rounded capitalize">{paymentInfo.method.toLowerCase()}</span>
                     {paymentInfo.method === 'DINHEIRO' && paymentInfo.change > 0 && (
-                      <span className="text-emerald-600 ml-auto">Troco: R$ {paymentInfo.change.toFixed(2)}</span>
+                      <span className="text-emerald-600 ml-auto">Troco: R$ {(paymentInfo?.change || 0).toFixed(2)}</span>
                     )}
                  </div>
               </div>

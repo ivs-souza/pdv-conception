@@ -8,12 +8,12 @@ interface DebtorsListProps {
 }
 
 /**
- * PDV Conception v2.1 - DebtorsList
+ * Sapphire v2.1 - DebtorsList
  * Monitor de Inadimplência (Top 3 Devedores).
  */
 export function DebtorsList({ debtors }: DebtorsListProps) {
   const openWhatsApp = (client: any) => {
-    const message = encodeURIComponent(`Olá ${client.name}, estamos atualizando nosso financeiro na PDV Conception. Consta um saldo em aberto de R$ ${client.totalDebt.toFixed(2)}. Como podemos facilitar o acerto?`)
+    const message = encodeURIComponent(`Olá ${client.name}, estamos atualizando nosso financeiro na Sapphire. Consta um saldo em aberto de R$ ${(client?.totalDebt || 0).toFixed(2)}. Como podemos facilitar o acerto?`)
     window.open(`https://wa.me/55${client.phone.replace(/\D/g, '')}?text=${message}`, '_blank')
   }
 
@@ -38,7 +38,7 @@ export function DebtorsList({ debtors }: DebtorsListProps) {
                   </div>
                   <div className="flex flex-col">
                      <span className="text-xs font-bold text-slate-900 truncate max-w-[100px]">{client.name}</span>
-                     <span className="text-[10px] font-bold text-red-500 tracking-tighter">R$ {client.totalDebt.toFixed(2)}</span>
+                     <span className="text-[10px] font-bold text-red-500 tracking-tighter">R$ {(client?.totalDebt || 0).toFixed(2)}</span>
                   </div>
                </div>
                

@@ -19,7 +19,7 @@ import { cleanPhone, formatCurrency } from '@/utils/format'
 import { useToast } from '@/components/layout/Toast'
 
 /**
- * PDV Conception v2.0 - Clientes (CRM)
+ * Sapphire v2.0 - Clientes (CRM)
  * Hub de Relacionamento e Engajamento Direct-to-WA.
  */
 export default function ClientesPage() {
@@ -30,18 +30,31 @@ export default function ClientesPage() {
   const { showToast } = useToast()
 
   useEffect(() => {
+    if (!db) return
     const q = query(collection(db, "clientes"), orderBy("name", "asc"))
+    
+    // Safety Fallback: 5s connection guard
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoading(false)
+        console.warn("⏱️ CRM Timeout: Verifique sua conexão ou permissões do banco.")
+      }
+    }, 5000)
+
     const unsubscribe = onSnapshot(q, async (snapshot: any) => {
       const docs = await Promise.all(snapshot.docs.map(async (docSnap: any) => {
         const baseData = { id: docSnap.id, ...docSnap.data() }
-        // Fetch LTV for each client (could be optimized with a separate counter)
         const ltvData = await CustomerService.getCustomerLTV(docSnap.id)
         return { ...baseData, ...ltvData }
       }))
       setClients(docs)
       setLoading(false)
+      clearTimeout(timer)
     })
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      clearTimeout(timer)
+    }
   }, [])
 
   const filteredClients = clients.filter(c => 
@@ -50,7 +63,7 @@ export default function ClientesPage() {
   )
 
   const openWhatsApp = (client: any) => {
-    const message = encodeURIComponent(`Olá ${client.name}, sentimos sua falta na PDV Conception! Temos novidades para você.`)
+    const message = encodeURIComponent(`Olá ${client.name}, sentimos sua falta na Sapphire! Temos novidades para você.`)
     const purePhone = cleanPhone(client.phone)
     window.open(`https://wa.me/55${purePhone}?text=${message}`, '_blank')
   }
@@ -149,7 +162,7 @@ function ClientCard({ client, onWhatsApp }: any) {
              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Gasto</span>
              <div className="flex items-center gap-1 text-emerald-600">
                 <DollarSign size={14} />
-                <span className="text-sm font-black tracking-tight">R$ {client.totalSpent.toFixed(2)}</span>
+                <span className="text-sm font-black tracking-tight">R$ {(client?.totalSpent || 0).toFixed(2)}</span>
              </div>
           </div>
           <div>
