@@ -1,17 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+/**
+ * PDV Conception v2.0 - Sapphire Clean UI
+ * Design Language: Modern SaaS | Ice Gray & Sapphire Blue
+ * Author: Senior Software Engineer & UI Designer
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --slate-900: #0f172a;
-  --slate-800: #1e293b;
-  --slate-100: #f1f5f9;
-  --red-600: #dc2626;
-  --blue-700: #1d4ed8;
-  --emerald-600: #059669;
-  --white: #ffffff;
-  --gray-50: #f8fafc;
-  --gray-200: #e2e8f0;
-  
-  --font-main: 'Inter', sans-serif;
+  --bg-ice: #f8fafc;
+  --white-pure: #ffffff;
+  --sapphire-blue: #0f172a;
+  --sapphire-light: #1e293b;
+  --emerald-success: #10b981;
+  --slate-text: #334155;
+  --slate-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --radius-premium: 12px;
 }
 
 * {
@@ -21,55 +25,94 @@
 }
 
 body {
-  background-color: var(--gray-50);
-  color: var(--slate-900);
-  font-family: var(--font-main);
+  background-color: var(--bg-ice);
+  color: var(--sapphire-blue);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 {
-  font-weight: 900;
-  text-transform: uppercase;
+/* Layout Grid */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Base UI Components */
+.premium-card {
+  background: var(--white-pure);
+  border-radius: var(--radius-premium);
+  border: 1px solid var(--border-subtle);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+}
+
+.btn-sapphire {
+  background: var(--sapphire-blue);
+  color: var(--white-pure);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-sapphire:hover {
+  background: var(--sapphire-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+}
+
+/* Typography Hub */
+h1, h2, h3, h4 {
+  color: var(--sapphire-blue);
+  font-weight: 800;
   letter-spacing: -0.025em;
 }
 
-/* Typography Helpers */
-.font-black { font-weight: 900; }
-.font-bold { font-weight: 700; }
-.font-medium { font-weight: 500; }
-
-.text-total {
-  font-size: 5rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
+.text-muted {
+  color: var(--slate-muted);
+  font-size: 14px;
 }
 
-.magazine-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+/* Utility Animations */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.btn-primary {
-  background: var(--blue-700);
-  color: var(--white);
-  padding: 1rem 2rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
+.animate-fade-in {
+  animation: slideIn 0.4s ease forwards;
 }
 
-.btn-primary:hover {
-  opacity: 0.9;
+/* Chart Aesthetics */
+.chart-line {
+  stroke: var(--sapphire-blue);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.1));
 }
 
-.btn-danger {
-  background: var(--red-600);
-  color: var(--white);
-  padding: 1rem;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
+.chart-area {
+  fill: url(#chart-gradient);
 }

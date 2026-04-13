@@ -1,90 +1,79 @@
+import { db } from '@/utils/firebase'
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  getDocs, 
+  getDoc,
+  query, 
+  where, 
+  orderBy,
+  serverTimestamp,
+  increment 
+} from 'firebase/firestore'
+
 /**
- * CustomerService
- * Manages customer data, credit limits, and "caderninho" (debt) monitoring.
- * Follows the 'Gravity Service Pattern'.
+ * PDV Conception v2.0 - CustomerService
+ * Relationships Management and Lifetime Value (LTV) Engine.
  */
-export class CustomerService {
+export const CustomerService = {
   /**
-   * Retrieves all customers with their current financial status.
+   * Registers a new customer.
    */
-  static async getCustomers() {
-    // In production, this would be a full Prisma query:
-    // return await prisma.customer.findMany({ orderBy: { name: 'asc' } })
-    
-    return [
-      { 
-        id: 'c1', 
-        name: 'JOÃO FAZENDEIRO', 
-        document: '123.456.789-00', 
-        whatsapp: '5535999999999', 
-        credit_limit: 5000.00, 
-        current_balance: -1250.40, // Negative balance means debt
-        status: 'DEBT' 
-      },
-      { 
-        id: 'c2', 
-        name: 'MARIA DO LEITE', 
-        document: '987.654.321-11', 
-        whatsapp: '5535888888888', 
-        credit_limit: 2000.00, 
-        current_balance: 0.00, 
-        status: 'OK' 
-      },
-      { 
-        id: 'c3', 
-        name: 'AGROVILA LTDA', 
-        document: '11.222.333/0001-44', 
-        whatsapp: '5535777777777', 
-        credit_limit: 15000.00, 
-        current_balance: -4500.00, 
-        status: 'DEBT' 
-      }
-    ];
-  }
+  async createCustomer(data: any) {
+    try {
+      const customerRef = collection(db, "clientes")
+      const docRef = await addDoc(customerRef, {
+        ...data,
+        totalDebt: 0, // Initialize debt balance
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      return { id: docRef.id, ...data }
+    } catch (e) {
+      console.error("Error creating customer:", e)
+      throw e
+    }
+  },
 
   /**
-   * Registers a new customer into the fiscal system.
-   * Ensures LGPD compliance fields are initialized.
+   * Increments the customer's debt balance.
    */
-  static async createCustomer(data: { name: string; document: string; whatsapp: string; credit_limit: number }) {
-    console.log('[CUSTOMER] Creating new profile:', data);
-    
-    // In production environment:
-    // return await prisma.customer.create({
-    //   data: {
-    //     ...data,
-    //     current_balance: 0,
-    //     data_consent: false
-    //   }
-    // })
-
-    return { 
-      success: true, 
-      id: `cust-${Math.random().toString(36).substr(2, 9)}`,
-      ...data 
-    };
-  }
+  async incrementDebt(clientId: string, amount: number) {
+    try {
+      const customerRef = doc(db, "clientes", clientId)
+      await updateDoc(customerRef, {
+        totalDebt: increment(amount),
+        updatedAt: serverTimestamp(),
+      })
+    } catch (e) {
+      console.error("Error updating debt:", e)
+      throw e
+    }
+  },
 
   /**
-   * Finalizes the payment of a pending debt.
-   * Requires an audit trail to track if fees were applied or waived.
+   * Fetches total spending and last purchase date for a specific customer.
    */
-  static async settleDebt(
-    sellerId: string, 
-    customerId: string, 
-    paymentData: { principal: number; charges: number; forgiven: boolean }
-  ) {
-    console.log(`[DEBT_SETTLE] Customer ${customerId} by Seller ${sellerId}. Forgiven: ${paymentData.forgiven}`);
-
-    // In production, update customer balance and close relevant sales...
-    
-    // Register high-priority audit log
-    // In production: await AuditService.log(...)
-    
-    return {
-      success: true,
-      transactionId: `tx-${Date.now()}`,
-      status: paymentData.forgiven ? 'SETTLED_WITH_WAIVER' : 'SETTLED_FULL'
-    };
+  async getCustomerLTV(clientId: string) {
+    try {
+      const salesQuery = query(
+        collection(db, "vendas"), 
+        where("clientId", "==", clientId),
+        orderBy("createdAt", "desc")
+      )
+      
+      const snapshot = await getDocs(salesQuery)
+      const sales = snapshot.docs.map(doc => doc.data())
+      
+      const totalSpent = sales.reduce((acc: number, s: any) => acc + (s.total || 0), 0)
+      const lastPurchase = sales.length > 0 ? (sales[0].createdAt?.toDate() || null) : null
+      
+      return { totalSpent, lastPurchase, salesCount: sales.length }
+    } catch (e) {
+      console.error("Error fetching LTV:", e)
+      return { totalSpent: 0, lastPurchase: null, salesCount: 0 }
+    }
   }
 }

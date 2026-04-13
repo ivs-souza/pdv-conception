@@ -1,50 +1,87 @@
+import { db } from '@/utils/firebase'
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  limit, 
+  orderBy,
+  onSnapshot
+} from 'firebase/firestore'
+
 /**
- * AnalyticsService
- * Responsible for aggregating business metrics and financial health indicators.
- * Follows the 'Gravity Service Pattern'.
+ * PDV Conception v2.0 - AnalyticsService
+ * Business Intelligence engine for SaaS performance oversight.
  */
-export class AnalyticsService {
+export const AnalyticsService = {
   /**
-   * Fetches the key analytical indicators for the Admin Dashboard.
-   * Performs heavy lifting for Ticket Médio, Inadimplência, and Breakage triggers.
+   * Fetches the last 5 sales for the Activity Feed.
    */
-  static async getAdminMetrics() {
-    // In a production environment, this would execute complex Prisma queries:
-    // const avgTicket = await prisma.sale.aggregate({ _avg: { total_amount: true } })
-    
-    // Simulation of operational performance data 2026
-    return {
-      daily: {
-        ticketMedio: 154.50,
-        totalSales: 8430.00,
-        salesCount: 54
-      },
-      financialHealth: {
-        totalOverduePrincipal: 12450.00,
-        accruedFines: 249.00,
-        accruedInterest: 312.45,
-        totalRecoverable: 13011.45,
-        inadimplenciaIndex: 8.5,
-        riskLevel: 'MODERADO',
-        creditLimitExposure: 45000.00
-      },
-      breakage: {
-        weeklyAccumulated: 154.20,
-        alertThreshold: 100.00, // The 'Value X' for triggers
-        lastRecorded: '2026-04-12T10:00:00Z'
-      },
-      rankings: {
-        byVolume: [
-          { name: 'PRODUTO ALPHA', quantity: 125, trend: 'up' },
-          { name: 'PRODUTO BETA', quantity: 98, trend: 'stable' },
-          { name: 'SERVIÇO LOG', quantity: 45, trend: 'down' }
-        ],
-        byMargin: [
-          { name: 'SERVIÇO SUPORTE', margin: 0.85, profit: 4500 },
-          { name: 'PEÇA REPOSIÇÃO', margin: 0.62, profit: 2100 },
-          { name: 'INSUMO BIO', margin: 0.45, profit: 1200 }
-        ]
+  subscribeToRecentSales(callback: (sales: any[]) => void) {
+    const q = query(collection(db, "vendas"), orderBy("createdAt", "desc"), limit(5))
+    return onSnapshot(q, (snapshot: any) => {
+      const sales = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))
+      callback(sales)
+    })
+  },
+
+  /**
+   * Aggregates financial totals for a specific period.
+   * Logic: Optimized for v2.0 client-side aggregation.
+   */
+  async getQuickStats(period: 'TODAY' | 'WEEK' | 'MONTH' = 'MONTH') {
+    try {
+      const salesSnap = await getDocs(collection(db, "vendas"))
+      const productsSnap = await getDocs(collection(db, "produtos"))
+      
+      const products = productsSnap.docs.map((d: any) => d.data())
+      
+      // Filter sales by date
+      const now = new Date()
+      const filterDate = new Date()
+      if (period === 'TODAY') filterDate.setHours(0,0,0,0)
+      if (period === 'WEEK') filterDate.setDate(now.getDate() - 7)
+      if (period === 'MONTH') filterDate.setDate(now.getDate() - 30)
+
+      const sales = salesSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((s: any) => s.createdAt && s.createdAt.toDate() >= filterDate)
+
+      const totalFaturamento = sales.reduce((acc: number, s: any) => acc + (s.total || 0), 0)
+      const totalLucro = sales.reduce((acc: number, s: any) => acc + (s.estimatedProfit || 0), 0)
+      
+      // Group by payment method
+      constByMethod: any = {
+        DINHEIRO: sales.filter((s: any) => s.paymentMethod === 'DINHEIRO').reduce((acc: number, s: any) => acc + (s.total - (s.changeAmount || 0)), 0),
+        ELECTRONIC: sales.filter((s: any) => ['PIX', 'CREDITO', 'DEBITO'].includes(s.paymentMethod)).reduce((acc: number, s: any) => acc + (s.total || 0), 0),
+        FIADO: sales.filter((s: any) => s.paymentMethod === 'FIADO').reduce((acc: number, s: any) => acc + (s.total || 0), 0)
       }
-    };
+
+      return {
+        totalFaturamento,
+        totalLucro,
+        ticketMedio: sales.length > 0 ? totalFaturamento / sales.length : 0,
+        lowStockCount: products.filter(p => p.currentStock <= (p.minStock || 0)).length,
+        vendasCount: sales.length,
+        byMethod: constByMethod
+      }
+    } catch (e) {
+      console.error("Analytics Error:", e)
+      return null
+    }
+  },
+
+  /**
+   * Fetches Top 3 Debtors based on monetary value.
+   */
+  async getTopDebtors() {
+    try {
+      const q = query(collection(db, "clientes"), orderBy("totalDebt", "desc"), limit(3))
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    } catch (e) {
+      console.error("error fetching debtors:", e)
+      return []
+    }
   }
 }

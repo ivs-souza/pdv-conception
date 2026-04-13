@@ -1,23 +1,24 @@
 import './globals.css'
-import './gravity.css' // High-performance Glassmorphism system
 import type { Metadata, Viewport } from 'next'
-import { NavSidebar } from '@/components/layout/NavSidebar'
-import { BottomNav } from '@/components/layout/BottomNav'
-import { Footer } from '@/components/layout/Footer'
+import { Inter } from 'next/font/google'
+import NavSidebar from '@/components/layout/NavSidebar'
+import { ToastProvider } from '@/components/layout/Toast'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PDV Conception | Gravity',
-  description: 'Next-gen Point of Sale with Glassmorphism',
+  title: 'PDV Conception v2.0 | SaaS Premium',
+  description: 'Sistema de Gestão Profissional Modular',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'PDV Conception',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#020617',
+  themeColor: '#0f172a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -29,24 +30,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const currentRole: 'ADMIN' | 'SELLER' = 'ADMIN';
-
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR">
       <head>
-        <link rel="apple-touch-icon" href="/icon.png" />
+         <link rel="manifest" href="/manifest.json" />
+         <meta name="theme-color" content="#0F172A" />
       </head>
-      <body className="antialiased font-gravity">
-        <div id="pdv-gravity-root" className="flex min-h-screen">
-          <NavSidebar role={currentRole} />
-          
-          <main className="flex-1 gravity-main gravity-container relative transition-all duration-300">
-            {children}
-            <Footer />
-          </main>
-
-          <BottomNav />
-        </div>
+      <body className={inter.className}>
+        <ToastProvider>
+          <div className="flex bg-[#F8FAFC] min-h-screen text-slate-900">
+            <NavSidebar />
+            <main className="flex-1 p-8 lg:p-12 overflow-x-hidden">
+              {children}
+            </main>
+          </div>
+        </ToastProvider>
       </body>
     </html>
   )

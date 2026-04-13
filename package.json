@@ -1,29 +1,28 @@
 {
-    "name": "pdv-conception",
-    "version": "1.0.0",
-    "description": "Modular PDV with strict typing and Prisma",
-    "main": "index.js",
-    "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start",
-        "lint": "next lint"
-    },
-    "dependencies": {
-        "@prisma/client": "^5.12.1",
-        "@sinclair/typebox": "^0.32.0",
-        "@supabase/supabase-js": "^2.103.0",
-        "dotenv": "^16.4.5",
-        "lucide-react": "^0.378.0",
-        "next": "14.2.3",
-        "prisma": "^5.12.1",
-        "react": "18.3.1",
-        "react-dom": "18.3.1"
-    },
-    "devDependencies": {
-        "@types/node": "^20.12.12",
-        "@types/react": "^18.3.3",
-        "@types/react-dom": "^18.3.0",
-        "typescript": "^5.4.5"
-    }
+  "name": "pdv-conception",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18",
+    "next": "14.2.3",
+    "firebase": "^10.11.1",
+    "lucide-react": "^0.378.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3"
+  }
 }

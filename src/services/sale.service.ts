@@ -1,54 +1,54 @@
-import { AuditService } from './audit.service'
+import { db } from '@/utils/firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 /**
- * SaleService
- * Manages sales transactions, including 'fiado' (credit) logic and audit triggers.
- * Follows the 'Gravity Service Pattern'.
+ * PDV Conception v2.0 - SaleService
+ * Logic: Handles sale registration and Firestore persistence.
  */
-export class SaleService {
+export const SaleService = {
   /**
-   * Processes a new sale.
-   * Checks for significant discounts and updates customer financial balance if necessary.
-   * @param userId ID of the seller
-   * @param data Sale data including items and payment method
+   * Registers a new sale in the system.
+   * Captures full payment metadata for financial accuracy.
    */
-  static async processSale(userId: string, data: any) {
-    const { customerId, items, payment_method } = data;
-    
-    // 1. Calculate totals and check for high discounts
-    let grandTotal = 0;
-    
-    for (const item of items) {
-      const lineTotal = item.price * item.quantity;
-      grandTotal += lineTotal;
-
-      // Business Rule: Audit discounts > 10%
-      const discountPercentage = (item.original_price - item.price) / item.original_price;
+  async registerSale(
+    items: any[], 
+    total: number, 
+    clientId: string | null = null, 
+    clientName: string | null = null,
+    paymentInfo: {
+      method: string,
+      received: number,
+      change: number,
+      notes: string
+    }
+  ) {
+    try {
+      const saleRef = collection(db, "vendas")
       
-      if (discountPercentage > 0.10) {
-        await AuditService.log(userId, 'HIGH_DISCOUNT', {
-          productId: item.productId,
-          discount: `${(discountPercentage * 100).toFixed(2)}%`,
-          originalPrice: item.original_price,
-          salePrice: item.price
-        });
-      }
-    }
+      const localizedItems = items.map(item => ({
+        ...item,
+        costAtSale: item.costPrice || 0,
+      }))
 
-    // 2. Manage 'Fiado' (Customer Balance)
-    if (payment_method === 'FIADO') {
-      console.log(`Updating customer ${customerId} balance by -${grandTotal}`);
-      // In production:
-      // await prisma.customer.update({
-      //   where: { id: customerId },
-      //   data: { current_balance: { decrement: grandTotal } }
-      // })
+      const docRef = await addDoc(saleRef, {
+        items: localizedItems,
+        total,
+        clientId,
+        clientName,
+        paymentMethod: paymentInfo.method,
+        receivedAmount: paymentInfo.received,
+        changeAmount: paymentInfo.change,
+        notes: paymentInfo.notes,
+        status: paymentInfo.method === 'FIADO' ? 'UNPAID' : 'COMPLETED',
+        createdAt: serverTimestamp(),
+        currency: 'BRL',
+        estimatedProfit: total - localizedItems.reduce((acc: number, item: any) => acc + (item.costAtSale * item.qty), 0)
+      })
+      
+      return { id: docRef.id, ...paymentInfo }
+    } catch (e) {
+      console.error("Error adding sale: ", e)
+      throw e
     }
-
-    return {
-      success: true,
-      sale_id: 'mock-sale-id',
-      total: grandTotal
-    };
   }
 }
