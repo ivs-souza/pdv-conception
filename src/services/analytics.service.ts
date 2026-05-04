@@ -17,12 +17,19 @@ export const AnalyticsService = {
   /**
    * Fetches the last 5 sales for the Activity Feed.
    */
-  subscribeToRecentSales(callback: (sales: any[]) => void) {
+  subscribeToRecentSales(unidade: string, callback: (sales: any[]) => void) {
     if (!db) {
        console.warn("Firestore not configured. Recent sales subscription skipped.")
        return () => {}
     }
-    const q = query(collection(db, "vendas"), orderBy("createdAt", "desc"), limit(5))
+    if (!unidade) return () => {}
+
+    const q = query(
+      collection(db, "vendas"), 
+      where("unidade", "==", unidade),
+      orderBy("createdAt", "desc"), 
+      limit(5)
+    )
     return onSnapshot(q, (snapshot: any) => {
       const sales = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))
       callback(sales)
@@ -33,7 +40,7 @@ export const AnalyticsService = {
    * Aggregates financial totals for a specific period.
    * Logic: Optimized for v2.0 client-side aggregation.
    */
-  async getQuickStats(period: 'TODAY' | 'WEEK' | 'MONTH' = 'MONTH') {
+  async getQuickStats(unidade: string, period: 'TODAY' | 'WEEK' | 'MONTH' = 'MONTH') {
     const zeroState = {
       totalFaturamento: 0,
       totalLucro: 0,
@@ -46,10 +53,11 @@ export const AnalyticsService = {
       byMethod: { DINHEIRO: 0, ELECTRONIC: 0, FIADO: 0 }
     }
 
-    if (!db) return zeroState
+    if (!db || !unidade) return zeroState
     try {
-      const salesSnap = await getDocs(collection(db, "vendas"))
-      const productsSnap = await getDocs(collection(db, "produtos"))
+      console.log('📊 BI: Buscando dados para unidade:', unidade)
+      const salesSnap = await getDocs(query(collection(db, "vendas"), where("unidade", "==", unidade)))
+      const productsSnap = await getDocs(query(collection(db, "produtos"), where("unidade", "==", unidade)))
       
       const products = productsSnap.docs.map((d: any) => d.data())
       
@@ -112,15 +120,22 @@ export const AnalyticsService = {
           amount,
           percentage: totalFaturamento > 0 ? (amount / totalFaturamento) * 100 : 0
         }))
+        .filter(c => c.amount > 0)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 4)
 
-      // Group by payment method
-      const constByMethod: any = {
-        DINHEIRO: sales.filter((s: any) => s.paymentMethod === 'DINHEIRO').reduce((acc: number, s: any) => acc + (s.total - (s.changeAmount || 0)), 0),
-        ELECTRONIC: sales.filter((s: any) => ['PIX', 'CREDITO', 'DEBITO', 'CARTÃO'].includes(s.paymentMethod)).reduce((acc: number, s: any) => acc + (s.total || 0), 0),
-        FIADO: sales.filter((s: any) => s.paymentMethod === 'FIADO').reduce((acc: number, s: any) => acc + (s.total || 0), 0)
-      }
+      // Group by payment method dynamically
+      const byMethod: any = {}
+      sales.forEach((s: any) => {
+        const method = s.paymentMethod || 'OUTRO'
+        const value = (s.total || 0) - (method === 'DINHEIRO' ? (s.changeAmount || 0) : 0)
+        byMethod[method] = (byMethod[method] || 0) + value
+      })
+
+      // Filter out zero-value methods for a cleaner UI
+      const dynamicByMethod = Object.fromEntries(
+        Object.entries(byMethod).filter(([_, val]: [any, any]) => val > 0)
+      )
 
       return {
         totalFaturamento,
@@ -131,10 +146,17 @@ export const AnalyticsService = {
         topCategory,
         weeklyPerformance: weeklyPerf,
         categoryRanking,
-        byMethod: constByMethod
+        byMethod: dynamicByMethod
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Analytics Error:", e)
+      if (e.code === 'failed-precondition' || e.message?.includes('index')) {
+        return {
+           ...zeroState,
+           topCategory: 'Sincronizando índices...',
+           isSyncing: true
+        }
+      }
       return zeroState
     }
   },
@@ -142,11 +164,12 @@ export const AnalyticsService = {
   /**
    * Fetches Top 3 Debtors based on monetary value.
    */
-  async getTopDebtors() {
-    if (!db) return []
+  async getTopDebtors(unidade: string) {
+    if (!db || !unidade) return []
     try {
       const q = query(
         collection(db, "clientes"), 
+        where("unidade", "==", unidade),
         where("totalDebt", ">", 0),
         orderBy("totalDebt", "desc"), 
         limit(3)

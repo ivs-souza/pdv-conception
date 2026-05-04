@@ -21,12 +21,14 @@ export const CustomerService = {
   /**
    * Registers a new customer.
    */
-  async createCustomer(data: any) {
+  async createCustomer(data: any, unidade: string) {
     if (!db) throw new Error("Firebase not configured")
+    if (!unidade) throw new Error("Unidade não informada")
     try {
       const customerRef = collection(db, "clientes")
       const docRef = await addDoc(customerRef, {
         ...data,
+        unidade, // Isolated Unit
         totalDebt: 0, // Initialize debt balance
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

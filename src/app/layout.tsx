@@ -1,8 +1,10 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { MobileNavbar } from '@/components/layout/MobileNavbar'
 import { ToastProvider } from '@/components/layout/Toast'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 
 
@@ -12,8 +14,17 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'Sapphire',
+    startupImage: [
+      {
+        url: '/icon-512x512.png',
+        media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
+      },
+    ],
+  },
+  formatDetection: {
+    telephone: false,
   },
 }
 
@@ -39,12 +50,15 @@ export default function RootLayout({
       <body>
         <ErrorBoundary>
           <ToastProvider>
-            <div className="flex bg-[#F8FAFC] min-h-screen text-slate-900">
-              <Sidebar />
-              <main className="flex-1 p-8 lg:p-12 overflow-x-hidden">
-                {children}
-              </main>
-            </div>
+            <AuthProvider>
+              <div className="flex flex-col lg:flex-row bg-[#F8FAFC] min-h-screen text-slate-900">
+                <MobileNavbar />
+                <Sidebar />
+                <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-x-hidden">
+                  {children}
+                </main>
+              </div>
+            </AuthProvider>
           </ToastProvider>
         </ErrorBoundary>
       </body>

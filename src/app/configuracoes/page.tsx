@@ -1,9 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Settings, Store, MapPin, MessageSquare, Trash2, Save, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Settings, Store, MapPin, MessageSquare, Trash2, Save, ArrowLeft, AlertCircle, RefreshCw, Layers } from 'lucide-react'
 import { SettingsService } from '@/services/settings.service'
+import { SaleService } from '@/services/sale.service'
 import { useToast } from '@/components/layout/Toast'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 
 /**
@@ -11,33 +13,38 @@ import Link from 'next/link'
  * Store metadata and system maintenance.
  */
 export default function ConfiguracoesPage() {
+  const { userData } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isCleaning, setIsCleaning] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [storeData, setStoreData] = useState<any>({
     name: '',
     address: '',
+    adminPhone: '',
     whatsappTemplate: ''
   })
   const { showToast } = useToast()
 
   useEffect(() => {
     async function load() {
-      const settings = await SettingsService.getSettings()
+      if (!userData?.unidade) return
+      const settings = await SettingsService.getSettings(userData.unidade)
       setStoreData(settings.store)
       setLoading(false)
     }
     load()
-  }, [])
+  }, [userData?.unidade])
 
   const handleSave = async () => {
+    if (!userData?.unidade) return
     setIsSaving(true)
     try {
-      const currentSettings = await SettingsService.getSettings()
+      const currentSettings = await SettingsService.getSettings(userData.unidade)
       await SettingsService.saveSettings({
         ...currentSettings,
         store: storeData
-      })
+      }, userData.unidade)
       showToast("Configurações salvas!", "success")
     } catch (e) {
       showToast("Erro ao salvar.", "error")
@@ -55,7 +62,7 @@ export default function ConfiguracoesPage() {
       if (prompt === "EXCLUIR") {
         setIsCleaning(true)
         try {
-          await SettingsService.clearDatabase()
+          await SettingsService.clearDatabase(userData!.unidade)
           showToast("Banco de dados limpo com sucesso!", "success")
           setTimeout(() => window.location.reload(), 2000)
         } catch (e) {
@@ -66,6 +73,39 @@ export default function ConfiguracoesPage() {
       } else if (prompt !== null) {
         showToast("Confirmação inválida. Operação cancelada.", "error")
       }
+    }
+  }
+
+  const handleSyncCrm = async () => {
+     const confirm = window.confirm("Deseja rodar o sincronizador do CRM? Ele vai varrer todas as vendas passadas e recalcular os totais de cada cliente. Pode demorar alguns segundos.")
+     if (!confirm) return
+
+     setIsSyncing(true)
+     try {
+        if (!userData?.unidade) return
+        const count = await SaleService.syncCrmMetrics(userData.unidade)
+        showToast(`CRM Sincronizado! ${count} clientes atualizados.`, "success")
+     } catch (e) {
+        console.error(e)
+        showToast("Erro ao sincronizar CRM.", "error")
+     } finally {
+        setIsSyncing(false)
+     }
+  }
+
+  const handleRescue = async () => {
+    const confirm = window.confirm("ATENÇÃO: Deseja iniciar o RESGATE DE EMERGÊNCIA? O sistema buscará todos os dados sem unidade e os vinculará a 'Amora Amora'.")
+    if (!confirm) return
+
+    setIsSyncing(true)
+    try {
+      const count = await SaleService.rescueLegacyData()
+      showToast(`${count} documentos resgatados com sucesso!`, "success")
+    } catch (e) {
+      console.error(e)
+      showToast("Erro durante o resgate.", "error")
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -128,6 +168,21 @@ export default function ConfiguracoesPage() {
                   </div>
 
                   <div className="relative">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">WhatsApp para Fechamento de Caixa</label>
+                     <div className="relative">
+                        <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input 
+                          type="text" 
+                          className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                          placeholder="5511999999999"
+                          value={storeData.adminPhone || ''}
+                          onChange={e => setStoreData({...storeData, adminPhone: e.target.value})}
+                        />
+                     </div>
+                     <span className="text-[9px] text-slate-400 font-bold mt-2 block uppercase tracking-tighter">Inclua o código do país (ex: 55). Este número receberá o Dossiê diário.</span>
+                  </div>
+
+                  <div className="relative">
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Template WhatsApp</label>
                      <div className="relative">
                         <MessageSquare className="absolute left-4 top-5 text-slate-400" size={18} />
@@ -169,10 +224,47 @@ export default function ConfiguracoesPage() {
 
                <button 
                  onClick={handleClearDatabase}
-                 disabled={isCleaning}
+                 disabled={isCleaning || isSyncing}
                  className="w-full py-4 bg-red-50 text-red-600 border border-red-100 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
                >
                   {isCleaning ? "Limpando..." : "Limpar Todo o Banco"} <Trash2 size={16} />
+               </button>
+
+               <button 
+                 onClick={handleSyncCrm}
+                 disabled={isSyncing || isCleaning}
+                 className="w-full py-4 bg-blue-50 text-blue-600 border border-blue-100 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50 mt-4"
+               >
+                  {isSyncing ? "Sincronizando..." : "Sincronizar CRM (Retroativo)"} <RefreshCw size={16} />
+               </button>
+
+               <button 
+                 onClick={async () => {
+                    const confirm = window.confirm("Deseja reconciliar as categorias das vendas? Isso corrigirá o gráfico do Dashboard com base nas categorias atuais do estoque.")
+                    if (!confirm) return
+                    setIsSyncing(true)
+                    try {
+                       if (!userData?.unidade) return
+                       const count = await SaleService.syncSaleCategories(userData.unidade)
+                       showToast(`${count} vendas corrigidas!`, "success")
+                    } catch (e) {
+                       showToast("Erro ao sincronizar categorias.", "error")
+                    } finally {
+                       setIsSyncing(false)
+                    }
+                 }}
+                 disabled={isSyncing || isCleaning}
+                 className="w-full py-4 bg-slate-50 text-slate-600 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50 mt-4"
+               >
+                  {isSyncing ? "Processando..." : "Revisar Categorias de Vendas"} <Layers size={16} />
+               </button>
+
+               <button 
+                 onClick={handleRescue}
+                 disabled={isSyncing || isCleaning}
+                 className="w-full py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 mt-4 shadow-lg shadow-emerald-500/10"
+               >
+                  {isSyncing ? "Resgatando..." : "Resgate de Dados Legados"} <RefreshCw size={16} />
                </button>
             </section>
 

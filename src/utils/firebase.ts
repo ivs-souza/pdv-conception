@@ -26,9 +26,9 @@ const app = (getApps().length === 0 && isConfigured)
 
 // Exporting services only if app exists. 
 // Consumers MUST check if these are null before use.
-export const db = app ? getFirestore(app) : null;
-export const auth = app ? getAuth(app) : null;
-export const storage = app ? getStorage(app) : null;
+export const db = (app ? getFirestore(app) : null) as any;
+export const auth = (app ? getAuth(app) : null) as any;
+export const storage = (app ? getStorage(app) : null) as any;
 
 if (db) {
   console.log("🔥 Firestore Initialized:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);

@@ -1,11 +1,12 @@
 {
-  "name": "PDV Conception",
-  "short_name": "PDV",
-  "description": "Sistema de Gestão SaaS Premium - Rebuild v2.0",
+  "name": "Sapphire | Intelligent Retail",
+  "short_name": "Sapphire 2.1",
+  "description": "Sistema de Gestão Profissional Modular Sapphire",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0f172a",
+  "orientation": "any",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F172A",
   "icons": [
     {
       "src": "/icon.png",
@@ -18,5 +19,7 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "scope": "/",
+  "lang": "pt-BR"
 }

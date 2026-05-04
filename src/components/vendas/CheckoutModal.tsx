@@ -39,8 +39,6 @@ export function CheckoutModal({ total, customer, onConfirm, onClose }: CheckoutM
     return d.toISOString().split('T')[0]
   })
 
-  const modalRef = useRef<HTMLDivElement>(null)
-  
   const receivedNum = Number(received) || 0
   const change = Math.max(0, receivedNum - total)
   
@@ -49,17 +47,6 @@ export function CheckoutModal({ total, customer, onConfirm, onClose }: CheckoutM
   const installmentValue = amountToPayInFiado / installments
   
   const isDebtWarning = customer && (customer.totalDebt || 0) > 500
-
-  // Click Outside logic
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    document.addEventListener('mousedown', handleOutsideClick)
-    return () => document.removeEventListener('mousedown', handleOutsideClick)
-  }, [onClose])
 
   const paymentMethods = [
     { id: 'DINHEIRO', label: 'Dinheiro', icon: <Banknote size={20} /> },
@@ -87,11 +74,16 @@ export function CheckoutModal({ total, customer, onConfirm, onClose }: CheckoutM
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <>
       <div 
-        ref={modalRef}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-slate-100 animate-slide-up flex flex-col md:flex-row min-h-[500px]"
-      >
+        className="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-md animate-fade-in no-print cursor-pointer"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 no-print pointer-events-none">
+        <div 
+          className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100 flex flex-col md:flex-row pointer-events-auto max-h-[95vh] md:max-h-[90vh]"
+          onClick={e => e.stopPropagation()}
+        >
         
         {/* Left Panel: Payment Selection */}
         <div className="w-full md:w-60 bg-slate-50 p-8 border-r border-slate-100 space-y-4">
@@ -263,5 +255,6 @@ export function CheckoutModal({ total, customer, onConfirm, onClose }: CheckoutM
         </div>
       </div>
     </div>
+    </>
   )
 }

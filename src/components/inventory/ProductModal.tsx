@@ -5,6 +5,8 @@ import { Save, X, Plus, Camera, Check, Edit } from 'lucide-react'
 import { ProductService } from '@/services/product.service'
 import { CategoryService } from '@/services/category.service'
 import { useToast } from '@/components/layout/Toast'
+import { BarcodeScanner } from '@/components/shared/BarcodeScanner'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ProductModalProps {
   onClose: () => void
@@ -16,19 +18,10 @@ interface ProductModalProps {
  * Professional form for cataloging items with SaaS precision.
  */
 export function ProductModal({ onClose, product }: ProductModalProps) {
+  const { userData } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
-  const modalRef = React.useRef<HTMLDivElement>(null)
+  const [showScanner, setShowScanner] = useState(false)
   
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    document.addEventListener('mousedown', handleOutsideClick)
-    return () => document.removeEventListener('mousedown', handleOutsideClick)
-  }, [onClose])
-
   const { showToast } = useToast()
   const [formData, setFormData] = useState({
     name: '',
@@ -36,7 +29,7 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
     category: '',
     costPrice: '',
     salePrice: '',
-    initialStock: '',
+    currentStock: '', // Linked correctly for both Create/Update
     minStock: '5',
     description: '',
   })
@@ -53,14 +46,17 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
          costPrice: String(product.costPrice || ''),
          salePrice: String(product.salePrice ?? product.precoVenda ?? product.preco_venda ?? ''),
          minStock: String(product.minStock || '5'),
-         initialStock: String(product.currentStock || '0')
+         currentStock: String(product.currentStock || '0')
        })
     }
-    fetchCategories()
-  }, [product])
+    if (userData?.unidade) {
+      fetchCategories()
+    }
+  }, [product, userData?.unidade])
 
   const fetchCategories = async () => {
-    const cats = await CategoryService.getCategories()
+    if (!userData?.unidade) return
+    const cats = await CategoryService.getCategories(userData.unidade)
     setCategories(cats)
     if (!product && cats.length > 0 && !formData.category) {
       setFormData(prev => ({ ...prev, category: cats[0].name }))
@@ -68,9 +64,9 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
   }
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return
+    if (!newCategoryName.trim() || !userData?.unidade) return
     try {
-      const added = await CategoryService.addCategory(newCategoryName.trim())
+      const added = await CategoryService.addCategory(newCategoryName.trim(), userData.unidade)
       setCategories(prev => [...prev, added])
       setFormData(prev => ({ ...prev, category: added.name }))
       setNewCategoryName('')
@@ -83,7 +79,7 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSaving) return
+    if (isSaving || !userData?.unidade) return
     
     setIsSaving(true)
     try {
@@ -96,7 +92,7 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
         ...formData,
         costPrice: Number(formData.costPrice),
         salePrice: Number(formData.salePrice),
-        initialStock: Number(formData.initialStock),
+        currentStock: Number(formData.currentStock), // Precision check
         minStock: Number(formData.minStock),
         imageUrl: imageUrl || product?.imageUrl || ''
       }
@@ -105,10 +101,15 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
         await ProductService.updateProduct(product.id, finalData)
         showToast("Produto atualizado com sucesso!", "success")
       } else {
-        await ProductService.createProduct(finalData)
+        await ProductService.createProduct({
+          ...finalData,
+          initialStock: Number(formData.currentStock) // Map for legacy creation
+        }, userData.unidade)
         showToast("Produto criado com sucesso!", "success")
       }
-      onClose()
+      
+      // Delay closure for visual toast feedback
+      setTimeout(() => onClose(), 800)
     } catch (err: any) {
       console.error("Erro Catálogo:", err)
       showToast(err.message || "Erro ao salvar produto.", "error")
@@ -118,8 +119,16 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div ref={modalRef} className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+    <>
+      <div 
+        className="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-md animate-fade-in no-print cursor-pointer"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 no-print pointer-events-none">
+        <div 
+          className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-slate-100 flex flex-col pointer-events-auto max-h-[95vh] md:max-h-[90vh]"
+          onClick={e => e.stopPropagation()}
+        >
         <header className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -139,7 +148,7 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
            </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="p-8 lg:p-12 space-y-8">
+        <form onSubmit={handleSubmit} className="p-8 lg:p-12 space-y-8 overflow-y-auto flex-1 custom-scrollbar">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                  <div>
@@ -155,7 +164,16 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
                  </div>
 
                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">SKU / Cód. Interno</label>
+                    <div className="flex items-center justify-between mb-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SKU / Cód. Interno</label>
+                       <button 
+                         type="button" 
+                         onClick={() => setShowScanner(true)}
+                         className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md transition-colors"
+                       >
+                          <Camera size={12} /> Scan
+                       </button>
+                    </div>
                     <input 
                       type="text" 
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
@@ -245,15 +263,15 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
 
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Estoque Inicial</label>
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Estoque Atual</label>
                        <input 
                          required
                          type="number"
                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
                          placeholder="0"
-                         value={formData.initialStock}
-                         onChange={e => setFormData({...formData, initialStock: e.target.value})}
-                       />
+                         value={formData.currentStock}
+                         onChange={e => setFormData({...formData, currentStock: e.target.value})}
+                    />
                     </div>
                     <div>
                        <label className="text-[10px] font-black text-orange-400 border-orange-100 uppercase tracking-widest mb-2 block">Estoque Mínimo</label>
@@ -301,5 +319,17 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
         </form>
       </div>
     </div>
+
+      {showScanner && (
+         <BarcodeScanner 
+            onScan={(code) => {
+               setFormData(prev => ({ ...prev, sku: code }))
+               setShowScanner(false)
+               showToast("Código lido com sucesso!", "success")
+            }}
+            onClose={() => setShowScanner(false)}
+         />
+      )}
+    </>
   )
 }

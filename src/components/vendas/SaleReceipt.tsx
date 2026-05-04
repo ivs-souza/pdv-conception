@@ -46,8 +46,16 @@ export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClo
   }
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in no-print">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col">
+    <>
+      <div 
+        className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md animate-fade-in no-print cursor-pointer"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-8 no-print pointer-events-none">
+        <div 
+          className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col pointer-events-auto max-h-[90vh]"
+          onClick={e => e.stopPropagation()}
+        >
         
         {/* Receipt Header */}
         <div className="bg-emerald-600 p-8 text-center text-white relative">
@@ -140,5 +148,6 @@ export function SaleReceipt({ saleId, items, total, paymentInfo, customer, onClo
         </div>
       </div>
     </div>
+    </>
   )
 }

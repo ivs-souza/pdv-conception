@@ -10,9 +10,12 @@ import {
   Users, 
   Calculator,
   Settings,
-  Gem
+  Gem,
+  BookOpen,
+  LogOut
 } from 'lucide-react'
 import { SettingsService } from '@/services/settings.service'
+import { useAuth } from '@/contexts/AuthContext'
 
 /**
  * Sapphire v3.2 - SaleService
@@ -21,21 +24,27 @@ import { SettingsService } from '@/services/settings.service'
 export function Sidebar() {
   const pathname = usePathname()
   const [companyName, setCompanyName] = React.useState('Sapphire')
+  const { user, userData, logout } = useAuth()
 
   React.useEffect(() => {
-    SettingsService.getSettings().then(settings => {
-      setCompanyName(settings.store?.name || 'Sapphire')
+    if (!userData?.unidade) return
+    SettingsService.getSettings(userData.unidade).then(settings => {
+      setCompanyName(settings.store?.name || userData.unidade)
     })
-  }, [])
+  }, [userData?.unidade])
 
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
     { name: 'Vendas', icon: <ShoppingCart size={20} />, path: '/vendas' },
+    { name: 'Crediário', icon: <BookOpen size={20} />, path: '/crediario' },
     { name: 'Estoque', icon: <Package size={20} />, path: '/estoque' },
     { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
     { name: 'Taxas', icon: <Calculator size={20} />, path: '/taxas' },
     { name: 'Configurações', icon: <Settings size={20} />, path: '/configuracoes' }
   ]
+
+  // Only render sidebar if user is logged in
+  if (!user) return null
 
   return (
     <aside className="w-64 bg-slate-900 h-screen sticky top-0 flex flex-col pt-8 pb-10 border-r border-slate-800 shrink-0 hidden lg:flex">
@@ -79,14 +88,29 @@ export function Sidebar() {
 
       {/* User Session Zone */}
       <div className="px-6 mt-auto">
-        <div className="bg-slate-800/50 rounded-2xl p-4 flex items-center gap-3 border border-slate-700/50">
-          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-black text-xs">
-            IS
+        <div className="bg-slate-800/50 rounded-2xl p-4 flex items-center justify-between border border-slate-700/50 group">
+          <div className="flex items-center gap-3">
+             <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-black text-xs shrink-0 overflow-hidden">
+               {user?.photoURL ? (
+                 <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+               ) : (
+                 user?.displayName?.split(' ').map((n: string) => n[0]).join('') || 'OP'
+               )}
+             </div>
+             <div className="flex flex-col min-w-0">
+               <span className="text-xs font-bold text-white leading-tight truncate">
+                  {userData?.nome || user?.displayName || 'Operador'}
+               </span>
+               <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{userData?.unidade || 'Filial'}</span>
+             </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-white leading-tight">Ives Souza</span>
-            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Admin</span>
-          </div>
+          <button 
+             onClick={logout}
+             className="text-slate-500 hover:text-red-500 transition-colors p-1"
+             title="Sair"
+          >
+             <LogOut size={16} />
+          </button>
         </div>
       </div>
     </aside>

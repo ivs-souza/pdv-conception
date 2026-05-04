@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Calculator, Percent, CreditCard, Smartphone, Banknote, Save, ArrowLeft } from 'lucide-react'
 import { SettingsService } from '@/services/settings.service'
 import { useToast } from '@/components/layout/Toast'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 
 /**
@@ -11,6 +12,7 @@ import Link from 'next/link'
  * Configuration for payment gateway fees.
  */
 export default function TaxasPage() {
+  const { userData } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [fees, setFees] = useState<any>({
@@ -24,21 +26,23 @@ export default function TaxasPage() {
 
   useEffect(() => {
     async function load() {
-      const settings = await SettingsService.getSettings()
+      if (!userData?.unidade) return
+      const settings = await SettingsService.getSettings(userData.unidade)
       setFees(settings.fees)
       setLoading(false)
     }
     load()
-  }, [])
+  }, [userData?.unidade])
 
   const handleSave = async () => {
+    if (!userData?.unidade) return
     setIsSaving(true)
     try {
-      const currentSettings = await SettingsService.getSettings()
+      const currentSettings = await SettingsService.getSettings(userData.unidade)
       await SettingsService.saveSettings({
         ...currentSettings,
         fees
-      })
+      }, userData.unidade)
       showToast("Taxas atualizadas com sucesso!", "success")
     } catch (e) {
       showToast("Erro ao salvar taxas.", "error")

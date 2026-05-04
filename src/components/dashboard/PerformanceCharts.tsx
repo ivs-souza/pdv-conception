@@ -112,15 +112,25 @@ export function PerformanceCharts({
 
         <div className="space-y-6">
            {categoryRanking.length > 0 ? (
-             categoryRanking.map((cat, idx) => (
-               <CategoryBar 
-                 key={cat.label} 
-                 label={cat.label} 
-                 value={cat.percentage} 
-                 color={idx === 0 ? "bg-blue-600" : "bg-slate-400"} 
-                 amount={formatCurrency(cat.amount)} 
-               />
-             ))
+             categoryRanking.map((cat, idx) => {
+               const colors = [
+                 "bg-blue-600",
+                 "bg-indigo-500",
+                 "bg-emerald-500",
+                 "bg-amber-500",
+                 "bg-rose-500",
+                 "bg-slate-400"
+               ]
+               return (
+                 <CategoryBar 
+                   key={cat.label} 
+                   label={cat.label} 
+                   value={cat.percentage} 
+                   color={colors[idx % colors.length]} 
+                   amount={formatCurrency(cat.amount)} 
+                 />
+               )
+             })
            ) : (
              <div className="py-20 text-center text-slate-300 italic text-sm font-bold uppercase tracking-widest">
                 Nenhuma venda registrada

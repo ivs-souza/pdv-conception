@@ -11,21 +11,37 @@ import {
   Lock,
   Send
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { useAuth } from '@/contexts/AuthContext'
 import { AnalyticsService } from '@/services/analytics.service'
 import { SettingsService } from '@/services/settings.service'
 import { InsightHeader } from '@/components/dashboard/InsightHeader'
-import { PerformanceCharts } from '@/components/dashboard/PerformanceCharts'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
 import { CashFlowGrid } from '@/components/dashboard/CashFlowGrid'
-import { MethodComposition } from '@/components/dashboard/MethodComposition'
 import { DebtorsList } from '@/components/dashboard/DebtorsList'
 import { formatCurrency } from '@/utils/format'
+import { CashService } from '@/services/cash.service'
+import { useCurrentRegister } from '@/hooks/useCurrentRegister'
+import { OpenRegisterModal } from '@/components/dashboard/OpenRegisterModal'
+import { CloseRegisterModal } from '@/components/dashboard/CloseRegisterModal'
+import { KPISkeleton, ChartSkeleton } from '@/components/shared/Skeleton'
+
+// Lazy loaded heavy components
+const MethodComposition = dynamic(() => import('@/components/dashboard/MethodComposition').then(m => m.MethodComposition), { 
+  ssr: false, 
+  loading: () => <ChartSkeleton /> 
+})
+const PerformanceCharts = dynamic(() => import('@/components/dashboard/PerformanceCharts').then(m => m.PerformanceCharts), { 
+  ssr: false, 
+  loading: () => <ChartSkeleton /> 
+})
 
 /**
  * Sapphire v2.1 - The Command Center
  * Hub de Inteligência, Fluxo de Caixa e Resultados.
  */
 export default function DashboardHome() {
+  const { userData } = useAuth()
   const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH'>('MONTH')
   const [stats, setStats] = useState<any>({
     totalFaturamento: 0,
@@ -39,58 +55,60 @@ export default function DashboardHome() {
   const [debtors, setDebtors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Register State Hub
+  const { currentRegister, isLoading: isRegisterLoading, isOpen } = useCurrentRegister()
+  const [showOpenModal, setShowOpenModal] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+
   const fetchFullData = async () => {
+    if (!userData?.unidade) return
     setLoading(true)
-    const [s, d] = await Promise.all([
-      AnalyticsService.getQuickStats(period),
-      AnalyticsService.getTopDebtors()
-    ])
-    setStats(s)
-    setDebtors(d)
-    setLoading(false)
+    try {
+      const [s, d] = await Promise.all([
+        AnalyticsService.getQuickStats(userData.unidade, period),
+        AnalyticsService.getTopDebtors(userData.unidade)
+      ])
+      setStats(s)
+      setDebtors(d)
+      console.log('📊 Dashboard: Analytics pronto')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
+    if (!userData?.unidade) return
     fetchFullData()
     
-    // Safety Fallback: Force loading to false after 5 seconds to prevent UI freeze
     const timer = setTimeout(() => {
       if (loading) {
         setLoading(false)
-        console.warn("⏱️ Sync Timeout: Verifique sua conexão ou permissões do banco.")
+        if (!stats?.isSyncing) {
+          console.warn("⏱️ Sync Timeout: Verifique sua conexão ou permissões do banco.")
+        }
       }
     }, 5000)
 
-    const unsubscribe = AnalyticsService.subscribeToRecentSales((sales) => {
+    const unsubscribe = AnalyticsService.subscribeToRecentSales(userData.unidade, (sales) => {
       setRecentSales(sales)
     })
-    
+
     return () => {
       clearTimeout(timer)
       unsubscribe()
     }
-  }, [period])
+  }, [period, userData?.unidade])
 
-  const handleCloseDay = async () => {
-    if (!stats) return
-    const settings = await SettingsService.getSettings()
-    
-    // Summary building for the [Resumo] placeholder
-    const resumo = `💵 Dinheiro: R$ ${(stats?.byMethod?.DINHEIRO || 0).toFixed(2)} | 💳 Digital: R$ ${(stats?.byMethod?.ELECTRONIC || 0).toFixed(2)} | 📒 Fiado: R$ ${(stats?.byMethod?.FIADO || 0).toFixed(2)} | 💰 TOTAL: R$ ${(stats?.totalFaturamento || 0).toFixed(2)}`
-    
-    let messageBody = settings.store.whatsappTemplate
-      .replace('[Nome do Cliente]', 'Administrador')
-      .replace('[Nome da Loja]', settings.store.name)
-      .replace('[Resumo]', resumo)
-
-    const message = encodeURIComponent(messageBody)
-    window.open(`https://wa.me/?text=${message}`, '_blank')
+  const handleActionClick = () => {
+     if (isOpen) setShowCloseModal(true)
+     else setShowOpenModal(true)
   }
 
 /* Removed loading guard to support Optimistic UI (rendering 0/--- immediately) */
 
   return (
-    <div className="space-y-10 animate-fade-in pb-20">
+    <>
+      <div className="space-y-10 animate-fade-in pb-20">
       {/* Dynamic Command Header */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
          <InsightHeader stats={stats} />
@@ -110,44 +128,66 @@ export default function DashboardHome() {
             ))}
             <div className="w-[1px] h-6 bg-slate-100 mx-2" />
             <button 
-              onClick={handleCloseDay}
-              className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all"
+              onClick={handleActionClick}
+              disabled={isRegisterLoading}
+              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-50 ${
+                isOpen 
+                  ? 'bg-slate-900 text-white hover:bg-slate-800' 
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
+              }`}
             >
-               <Lock size={14} /> Fechar Dia
+               {isRegisterLoading ? (
+                  <>Carregando...</>
+               ) : isOpen ? (
+                  <><Lock size={14} /> Fechar Caixa</>
+               ) : (
+                  <><Lock size={14} className="rotate-12" /> Abrir Caixa</>
+               )}
             </button>
          </div>
       </div>
 
       {/* KPI Core Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPIItem 
-           label="Faturamento Total" 
-           value={formatCurrency(stats?.totalFaturamento)} 
-           sublabel="Receita bruta no período"
-           icon={<DollarSign size={20} />} 
-           color="blue"
-        />
-        <KPIItem 
-           label="Lucro Estimado" 
-           value={formatCurrency(stats?.totalLucro)} 
-           sublabel="Margem real (v3.1)"
-           icon={<TrendingUp size={20} />} 
-           color="emerald"
-        />
-        <KPIItem 
-           label="Segmento Campeão" 
-           value={stats?.topCategory || '---'} 
-           sublabel={`${stats?.vendasCount || 0} vendas realizadas`}
-           icon={<Target size={20} />} 
-           color="slate"
-        />
-        <KPIItem 
-           label="Estoque Crítico" 
-           value={`${stats?.lowStockCount || 0} Itens`} 
-           sublabel="Abaixo do ressuprimento"
-           icon={<AlertTriangle size={20} />} 
-           color={(stats?.lowStockCount || 0) > 5 ? "red" : "orange"}
-        />
+        {loading ? (
+          <>
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+          </>
+        ) : (
+          <>
+             <KPIItem 
+                label="Faturamento Total" 
+                value={stats?.isSyncing ? "Sincronizando..." : formatCurrency(stats?.totalFaturamento)} 
+                sublabel={stats?.isSyncing ? "Construindo índices..." : "Receita bruta no período"}
+                icon={<DollarSign size={20} />} 
+                color="blue"
+             />
+            <KPIItem 
+               label="Lucro Estimado" 
+               value={formatCurrency(stats?.totalLucro)} 
+               sublabel="Margem real (v3.1)"
+               icon={<TrendingUp size={20} />} 
+               color="emerald"
+            />
+            <KPIItem 
+               label="Segmento Campeão" 
+               value={stats?.topCategory || '---'} 
+               sublabel={`${stats?.vendasCount || 0} vendas realizadas`}
+               icon={<Target size={20} />} 
+               color="slate"
+            />
+            <KPIItem 
+               label="Estoque Crítico" 
+               value={`${stats?.lowStockCount || 0} Itens`} 
+               sublabel="Abaixo do ressuprimento"
+               icon={<AlertTriangle size={20} />} 
+               color={(stats?.lowStockCount || 0) > 5 ? "red" : "orange"}
+            />
+          </>
+        )}
       </div>
 
       {/* Cash Flow Station */}
@@ -167,7 +207,13 @@ export default function DashboardHome() {
             <ActivityFeed sales={recentSales} />
          </div>
       </div>
-    </div>
+
+      </div>
+
+      {/* Modals */}
+      {showOpenModal && <OpenRegisterModal onClose={() => setShowOpenModal(false)} />}
+      {showCloseModal && <CloseRegisterModal register={currentRegister} onClose={() => setShowCloseModal(false)} />}
+    </>
   )
 }
 

@@ -5,7 +5,8 @@ import { Plus, Package, Download } from 'lucide-react'
 import { InventoryTable } from '@/components/inventory/InventoryTable'
 import { ProductModal } from '@/components/inventory/ProductModal'
 import { db } from '@/utils/firebase'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrency } from '@/utils/format'
 import { useToast } from '@/components/layout/Toast'
 
@@ -15,6 +16,7 @@ import { useToast } from '@/components/layout/Toast'
  * Features: Real-time stock tracking and Profit Margin analysis.
  */
 export default function EstoquePage() {
+  const { userData } = useAuth()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null)
   const [products, setProducts] = useState<any[]>([])
@@ -23,8 +25,12 @@ export default function EstoquePage() {
 
   // Centralized Intelligence Listener
   useEffect(() => {
-    if (!db) return
-    const q = query(collection(db, "produtos"), orderBy("name", "asc"))
+    if (!db || !userData?.unidade) return
+    const q = query(
+      collection(db, "produtos"), 
+      where("unidade", "==", userData.unidade),
+      orderBy("name", "asc")
+    )
     
     const timer = setTimeout(() => {
       if (loading) {
@@ -51,7 +57,7 @@ export default function EstoquePage() {
       unsubscribe()
       clearTimeout(timer)
     }
-  }, [])
+  }, [userData?.unidade])
 
   const handleEdit = (product: any) => {
     setSelectedProduct(product)
@@ -76,7 +82,8 @@ export default function EstoquePage() {
   }, [products])
 
   return (
-    <div className="space-y-10 animate-fade-in pb-20">
+    <>
+      <div className="space-y-10 animate-fade-in pb-20">
       {/* Module Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -145,6 +152,8 @@ export default function EstoquePage() {
       {/* Table Interface */}
       <InventoryTable products={products} loading={loading} onEdit={handleEdit} />
 
+      </div>
+
       {/* Modals Zone */}
       {isModalOpen && (
         <ProductModal 
@@ -152,7 +161,7 @@ export default function EstoquePage() {
           onClose={handleCloseModal} 
         />
       )}
-    </div>
+    </>
   )
 }
 

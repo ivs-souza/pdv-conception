@@ -17,12 +17,15 @@ export const ProductService = {
   /**
    * Adds a new product to the Firestore collection.
    */
-  async createProduct(data: any) {
+  async createProduct(data: any, unidade: string) {
     if (!db) throw new Error("Database not connected")
+    if (!unidade) throw new Error("Unidade não informada")
+
     try {
       const productRef = collection(db, "produtos")
       const docRef = await addDoc(productRef, {
         ...data,
+        unidade, // Isolated Unit
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         currentStock: Number(data.initialStock),
@@ -41,10 +44,21 @@ export const ProductService = {
     if (!db) throw new Error("Database not connected")
     try {
       const productRef = doc(db, "produtos", id)
-      await updateDoc(productRef, {
+      
+      const updateData = {
         ...data,
         updatedAt: serverTimestamp(),
-      })
+      }
+
+      // Force numeric type for stock integrity
+      if (data.currentStock !== undefined) {
+        updateData.currentStock = Number(data.currentStock)
+      } else if (data.initialStock !== undefined) {
+        // Fallback for modal fields
+        updateData.currentStock = Number(data.initialStock)
+      }
+
+      await updateDoc(productRef, updateData)
     } catch (e) {
       console.error("Error updating product:", e)
       throw e

@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Auth Helper
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Tenant Isolation Helper
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function belongsToUnit(unit) {
+      return isSignedIn() && unit == getUserData().unidade;
+    }
+
+    // User Profile
+    match /usuarios/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Global Settings
+    match /settings/{unitId} {
+      allow read, write: if isSignedIn() && unitId == getUserData().unidade;
+    }
+
+    // Business Data Isolation & Migration Logic
+    match /{collection}/{docId} {
+      // allow read if belongs to unit OR if unit field is missing (LEGACY)
+      allow read: if isSignedIn() && (
+        !('unidade' in resource.data) || 
+        resource.data.unidade == "" ||
+        belongsToUnit(resource.data.unidade)
+      );
+      
+      // allow update if it's a migration (adding unit) OR if already belongs to unit
+      allow update: if isSignedIn() && (
+        !('unidade' in resource.data) || 
+        resource.data.unidade == "" ||
+        belongsToUnit(resource.data.unidade)
+      );
+
+      allow delete: if belongsToUnit(resource.data.unidade);
+      
+      allow create: if belongsToUnit(request.resource.data.unidade);
+    }
+  }
+}

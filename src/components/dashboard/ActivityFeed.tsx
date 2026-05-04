@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Clock, ArrowUpRight, DollarSign, User } from 'lucide-react'
+import Link from 'next/link'
 
 interface ActivityFeedProps {
   sales: any[]
@@ -21,7 +22,7 @@ export function ActivityFeed({ sales }: ActivityFeedProps) {
            </div>
            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Últimas Vendas</h3>
         </div>
-        <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Ver Histórico</button>
+        <Link href="/vendas/historico" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Ver Histórico</Link>
       </div>
 
       <div className="space-y-6">

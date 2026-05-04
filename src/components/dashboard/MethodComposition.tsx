@@ -4,9 +4,7 @@ import React from 'react'
 
 interface MethodCompositionProps {
   data: {
-    DINHEIRO: number
-    ELECTRONIC: number
-    FIADO: number
+    [key: string]: number
   }
 }
 
@@ -15,18 +13,33 @@ interface MethodCompositionProps {
  * Horizontal percentage distribution of sales checkout.
  */
 export function MethodComposition({ data }: MethodCompositionProps) {
-  const total = data.DINHEIRO + data.ELECTRONIC + data.FIADO
+  const methodEntries = Object.entries(data)
+  const total = methodEntries.reduce((acc, [_, val]) => acc + val, 0)
   
   const getPercent = (val: number) => {
     if (total === 0) return 0
     return (val / total) * 100
   }
 
-  const sections = [
-    { label: 'Dinheiro', val: data.DINHEIRO, color: 'bg-emerald-500', percent: getPercent(data.DINHEIRO) },
-    { label: 'Eletrônicos', val: data.ELECTRONIC, color: 'bg-blue-500', percent: getPercent(data.ELECTRONIC) },
-    { label: 'Fiado', val: data.FIADO, color: 'bg-orange-500', percent: getPercent(data.FIADO) },
+  const colors = [
+    'bg-emerald-500', 
+    'bg-blue-600', 
+    'bg-orange-500', 
+    'bg-indigo-500', 
+    'bg-rose-500', 
+    'bg-amber-500', 
+    'bg-teal-500'
   ]
+
+  const sections = methodEntries
+    .map(([label, val], idx) => ({
+      label,
+      val,
+      color: colors[idx % colors.length],
+      percent: getPercent(val)
+    }))
+    .filter(s => s.percent > 0)
+    .sort((a, b) => b.val - a.val)
 
   return (
     <div className="premium-card">

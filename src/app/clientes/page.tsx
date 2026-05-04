@@ -12,8 +12,10 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { db } from '@/utils/firebase'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore'
+import { useAuth } from '@/contexts/AuthContext'
 import { CustomerModal } from '@/components/crm/CustomerModal'
+import { CustomerDetailsDrawer } from '@/components/crm/CustomerDetailsDrawer'
 import { CustomerService } from '@/services/customer.service'
 import { cleanPhone, formatCurrency } from '@/utils/format'
 import { useToast } from '@/components/layout/Toast'
@@ -23,15 +25,22 @@ import { useToast } from '@/components/layout/Toast'
  * Hub de Relacionamento e Engajamento Direct-to-WA.
  */
 export default function ClientesPage() {
+  const { userData } = useAuth()
   const [clients, setClients] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
-    if (!db) return
-    const q = query(collection(db, "clientes"), orderBy("name", "asc"))
+    if (!db || !userData?.unidade) return
+    const q = query(
+      collection(db, "clientes"), 
+      where("unidade", "==", userData.unidade),
+      orderBy("name", "asc")
+    )
     
     // Safety Fallback: 5s connection guard
     const timer = setTimeout(() => {
@@ -41,21 +50,30 @@ export default function ClientesPage() {
       }
     }, 5000)
 
-    const unsubscribe = onSnapshot(q, async (snapshot: any) => {
-      const docs = await Promise.all(snapshot.docs.map(async (docSnap: any) => {
-        const baseData = { id: docSnap.id, ...docSnap.data() }
-        const ltvData = await CustomerService.getCustomerLTV(docSnap.id)
-        return { ...baseData, ...ltvData }
-      }))
-      setClients(docs)
-      setLoading(false)
-      clearTimeout(timer)
+    const unsubscribe = onSnapshot(q, {
+      next: (snapshot: any) => {
+        const docs = snapshot.docs.map((docSnap: any) => ({
+          id: docSnap.id,
+          ...docSnap.data()
+        }))
+        setClients(docs)
+        setLoading(false)
+        setIsSyncing(false)
+        clearTimeout(timer)
+      },
+      error: (err) => {
+        console.error("CRM Snapshot Error:", err)
+        if (err.code === 'failed-precondition') {
+          setIsSyncing(true)
+          setLoading(false)
+        }
+      }
     })
     return () => {
       unsubscribe()
       clearTimeout(timer)
     }
-  }, [])
+  }, [userData?.unidade])
 
   const filteredClients = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -69,7 +87,8 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="space-y-10 animate-fade-in pb-20">
+    <>
+      <div className="space-y-10 animate-fade-in pb-20">
       {/* Module Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -106,33 +125,69 @@ export default function ClientesPage() {
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-4 text-slate-300">
            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-           <span className="text-xs font-bold uppercase tracking-widest">Sincronizando CRM...</span>
+           <span className="text-xs font-bold uppercase tracking-widest">Carregando CRM...</span>
+        </div>
+      ) : isSyncing ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-4 text-slate-300">
+           <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center animate-pulse">
+              <Users size={24} />
+           </div>
+           <div className="text-center">
+              <span className="text-xs font-bold uppercase tracking-widest block mb-2">Sincronizando CRM com o banco...</span>
+              <p className="text-[10px] font-medium max-w-[200px]">Estamos organizando seus contatos. Isso leva apenas alguns minutos.</p>
+           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClients.map(client => (
-             <ClientCard key={client.id} client={client} onWhatsApp={openWhatsApp} />
+             <ClientCard 
+               key={client.id} 
+               client={client} 
+               onWhatsApp={openWhatsApp} 
+               onClick={() => setSelectedClient(client)}
+             />
           ))}
         </div>
       )}
+
+      </div>
 
       {/* Modals Zone */}
       {isModalOpen && (
         <CustomerModal onClose={() => setIsModalOpen(false)} />
       )}
-    </div>
+
+      {selectedClient && (
+        <CustomerDetailsDrawer 
+          customer={selectedClient} 
+          onClose={() => setSelectedClient(null)} 
+        />
+      )}
+    </>
   )
 }
 
-function ClientCard({ client, onWhatsApp }: any) {
-  const daysSinceLastPurchase = client.lastPurchase 
-    ? Math.floor((new Date().getTime() - new Date(client.lastPurchase).getTime()) / (1000 * 3600 * 24))
+function ClientCard({ client, onWhatsApp, onClick }: any) {
+  // Safe date parsing for Firestore Timestamp or ISO String
+  const parseDate = (d: any) => {
+    if (!d) return null
+    if (d.toDate) return d.toDate() // Firestore Timestamp
+    return new Date(d)
+  }
+
+  const lastPurchaseDate = parseDate(client.lastPurchase)
+  
+  const daysSinceLastPurchase = lastPurchaseDate 
+    ? Math.floor((new Date().getTime() - lastPurchaseDate.getTime()) / (1000 * 3600 * 24))
     : null
 
   const isInactive = daysSinceLastPurchase !== null && daysSinceLastPurchase > 30
 
   return (
-    <div className="premium-card group hover:border-blue-200 transition-all">
+    <div 
+      onClick={onClick}
+      className="premium-card group hover:border-blue-200 transition-all cursor-pointer"
+    >
        <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black text-lg uppercase border border-slate-200/50 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -148,7 +203,10 @@ function ClientCard({ client, onWhatsApp }: any) {
           </div>
           
           <button 
-            onClick={() => onWhatsApp(client)}
+            onClick={(e) => {
+               e.stopPropagation()
+               onWhatsApp(client)
+            }}
             className={`p-2 rounded-xl transition-all ${isInactive ? 'bg-orange-50 text-orange-600 animate-pulse' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
             title={isInactive ? "Cliente inativo há mais de 30 dias!" : "Enviar mensagem"}
           >
@@ -166,20 +224,20 @@ function ClientCard({ client, onWhatsApp }: any) {
              </div>
           </div>
           <div>
-             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Última Compra</span>
-             <div className="flex items-center gap-1 text-slate-600">
-                <Calendar size={14} />
-                <span className="text-xs font-bold">{client.lastPurchase ? new Date(client.lastPurchase).toLocaleDateString() : 'Nunca'}</span>
-             </div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Última Compra</span>
+              <div className="flex items-center gap-1 text-slate-600">
+                 <Calendar size={14} />
+                 <span className="text-xs font-bold">{lastPurchaseDate ? lastPurchaseDate.toLocaleDateString() : 'Nunca'}</span>
+              </div>
           </div>
        </div>
 
-       <div className="pt-4 flex items-center justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-             {client.salesCount} Pedidos realizados
-          </span>
-          <ArrowRight size={16} className="text-slate-200 group-hover:text-blue-600 transition-all" />
-       </div>
+        <div className="pt-4 flex items-center justify-between">
+           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              {(client.ordersCount || client.salesCount || 0)} Pedidos realizados
+           </span>
+           <ArrowRight size={16} className="text-slate-200 group-hover:text-blue-600 transition-all" />
+        </div>
     </div>
   )
 }

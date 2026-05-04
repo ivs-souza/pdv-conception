@@ -7,7 +7,8 @@ import {
   doc, 
   serverTimestamp, 
   query, 
-  orderBy 
+  orderBy,
+  where 
 } from 'firebase/firestore'
 
 /**
@@ -18,16 +19,20 @@ export const CategoryService = {
   /**
    * Fetches categories and pre-populates if empty.
    */
-  async getCategories() {
-    if (!db) return []
+  async getCategories(unidade: string) {
+    if (!db || !unidade) return []
     try {
-      const q = query(collection(db, "categories"), orderBy("name", "asc"))
+      const q = query(
+        collection(db, "categories"), 
+        where("unidade", "==", unidade),
+        orderBy("name", "asc")
+      )
       const snap = await getDocs(q)
       
       if (snap.empty) {
         // Pre-population logic for 'Moda' niche
         const defaults = ['Blusas', 'Calças', 'Vestidos', 'Bodys', 'Acessórios']
-        const promises = defaults.map(name => this.addCategory(name))
+        const promises = defaults.map(name => this.addCategory(name, unidade))
         await Promise.all(promises)
         
         // Fetch again after population
@@ -45,11 +50,13 @@ export const CategoryService = {
   /**
    * Adds a new category.
    */
-  async addCategory(name: string) {
+  async addCategory(name: string, unidade: string) {
     if (!db) throw new Error("Database not connected")
+    if (!unidade) throw new Error("Unidade não informada")
     try {
       const docRef = await addDoc(collection(db, "categories"), {
         name,
+        unidade, // Isolated Unit
         createdAt: serverTimestamp()
       })
       return { id: docRef.id, name }

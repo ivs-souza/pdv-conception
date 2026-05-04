@@ -6,7 +6,9 @@ import {
   collection, 
   getDocs, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  query,
+  where 
 } from 'firebase/firestore'
 
 /**
@@ -18,7 +20,7 @@ export const SettingsService = {
    * Fetches global settings (Fees, Store Info).
    * Fallback to default values if not configured in Firestore.
    */
-  async getSettings() {
+  async getSettings(unidade: string) {
     const defaultSettings = {
       fees: {
         PIX: 0,
@@ -30,14 +32,15 @@ export const SettingsService = {
       store: {
         name: 'Sapphire',
         address: '',
+        adminPhone: '',
         whatsappTemplate: 'Olá [Nome do Cliente], aqui é da [Nome da Loja]. Segue o resumo da sua compra: [Resumo]. Agradecemos a preferência!'
       }
     }
 
-    if (!db) return defaultSettings
+    if (!db || !unidade) return defaultSettings
 
     try {
-      const docRef = doc(db, "settings", "global")
+      const docRef = doc(db, "settings", unidade)
       const docSnap = await getDoc(docRef)
       
       if (docSnap.exists()) {
@@ -54,16 +57,17 @@ export const SettingsService = {
   /**
    * Updates global settings.
    */
-  async saveSettings(settings: any) {
+  async saveSettings(settings: any, unidade: string) {
     if (!db) {
        console.error("❌ Save Settings Error: Database not connected.");
        throw new Error("Database not connected");
     }
+    if (!unidade) throw new Error("Unidade não informada")
     
     try {
-      console.log("📡 Attempting to save settings to 'settings/global'...", settings);
-      const docRef = doc(db, "settings", "global")
-      await setDoc(docRef, settings, { merge: true })
+      console.log(`📡 Attempting to save settings for unit '${unidade}'...`, settings);
+      const docRef = doc(db, "settings", unidade)
+      await setDoc(docRef, { ...settings, unidade }, { merge: true })
       console.log("✅ Settings saved successfully.");
       return settings
     } catch (e: any) {
@@ -80,14 +84,15 @@ export const SettingsService = {
    * Destructive utility to wipe collections (Maintenance Only).
    * Double confirmation logic resides in the UI layer.
    */
-  async clearDatabase() {
+  async clearDatabase(unidade: string) {
     if (!db) throw new Error("Database not connected")
+    if (!unidade) throw new Error("Unidade não informada")
     
-    const collections = ["vendas", "produtos", "clientes"]
+    const collections = ["vendas", "produtos", "clientes", "contas_a_receber"]
     const results = []
 
     for (const collName of collections) {
-      const q = collection(db, collName)
+      const q = query(collection(db, collName), where("unidade", "==", unidade))
       const snapshot = await getDocs(q)
       
       const batch = writeBatch(db)

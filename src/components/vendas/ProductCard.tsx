@@ -31,7 +31,10 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
   }
 
   return (
-    <div className="premium-card group relative">
+    <div 
+      onClick={() => onAdd({ ...product, price })}
+      className="premium-card group relative cursor-pointer active:scale-[0.98] transition-all hover:border-blue-200"
+    >
       {/* Category Badge */}
       <div className="absolute top-4 left-4 z-10">
         <span className="px-2 py-1 bg-slate-50 text-slate-400 text-[9px] font-black uppercase tracking-widest rounded-md border border-slate-100">
