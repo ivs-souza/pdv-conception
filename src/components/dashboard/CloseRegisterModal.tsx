@@ -26,7 +26,7 @@ export function CloseRegisterModal({ register, onClose }: CloseRegisterModalProp
           return
        }
        try {
-          const s = await CashService.calculateTurnSummary(userData.unidade, register.openedAt.toDate())
+          const s = await CashService.calculateTurnSummary(userData.unidade, userData.uid, register.openedAt.toDate())
           setSummary(s)
        } catch (e) {
           console.error(e)
@@ -61,8 +61,8 @@ export function CloseRegisterModal({ register, onClose }: CloseRegisterModalProp
     setIsProcessing(true)
     try {
       if (!userData?.unidade) throw new Error("Unidade não identificada")
-      await CashService.closeRegister(register.id, countedVal, expectedCash, safeSummary)
-      showToast("Caixa aberto com sucesso!", "success")
+      await CashService.closeRegister(register.id, countedVal, expectedCash, safeSummary, userData.uid, userData.nome)
+      showToast("Caixa fechado com sucesso!", "success")
       
       const settings = await SettingsService.getSettings(userData.unidade)
       

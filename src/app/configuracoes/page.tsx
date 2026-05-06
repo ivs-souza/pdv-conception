@@ -1,11 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Settings, Store, MapPin, MessageSquare, Trash2, Save, ArrowLeft, AlertCircle, RefreshCw, Layers } from 'lucide-react'
+import { Settings, Store, MapPin, MessageSquare, Trash2, Save, ArrowLeft, AlertCircle, RefreshCw, Layers, Plus, ShieldCheck, ShieldAlert, User, Mail, Trash } from 'lucide-react'
 import { SettingsService } from '@/services/settings.service'
 import { SaleService } from '@/services/sale.service'
 import { useToast } from '@/components/layout/Toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { db } from '@/utils/firebase'
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import Link from 'next/link'
 
 /**
@@ -24,6 +26,9 @@ export default function ConfiguracoesPage() {
     adminPhone: '',
     whatsappTemplate: ''
   })
+  
+  // Team Management State
+  const [team, setTeam] = useState<any[]>([])
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -34,7 +39,42 @@ export default function ConfiguracoesPage() {
       setLoading(false)
     }
     load()
-  }, [userData?.unidade])
+
+    // Real-time Team Listener
+    if (userData?.unidade && userData.role === 'admin') {
+      const q = query(collection(db, "usuarios"), where("unidade", "==", userData.unidade))
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setTeam(users)
+      })
+      return () => unsubscribe()
+    }
+  }, [userData?.unidade, userData?.role])
+
+  const handleToggleStockPermission = async (userId: string, currentStatus: boolean) => {
+    if (!db) return
+    try {
+      await updateDoc(doc(db, "usuarios", userId), {
+        canManageStock: !currentStatus
+      })
+      showToast("Permissão atualizada!", "success")
+    } catch (e) {
+      showToast("Erro ao atualizar permissão.", "error")
+    }
+  }
+
+  const handleDeleteUser = async (userId: string, name: string) => {
+    if (!db) return
+    const confirm = window.confirm(`Deseja realmente REVOGAR o acesso de ${name}? Ele não conseguirá mais entrar no sistema.`)
+    if (!confirm) return
+
+    try {
+      await deleteDoc(doc(db, "usuarios", userId))
+      showToast("Acesso revogado com sucesso!", "success")
+    } catch (e) {
+      showToast("Erro ao revogar acesso.", "error")
+    }
+  }
 
   const handleSave = async () => {
     if (!userData?.unidade) return
@@ -106,6 +146,31 @@ export default function ConfiguracoesPage() {
       showToast("Erro durante o resgate.", "error")
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  // --- Staff Management ---
+  const [staffData, setStaffData] = useState({ name: '', email: '', password: '', canManageStock: false })
+  const [isStaffCreating, setIsStaffCreating] = useState(false)
+  const { registerStaff } = useAuth()
+
+  const handleRegisterStaff = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!userData?.unidade) return
+    
+    const confirm = window.confirm(`Deseja cadastrar ${staffData.name} como vendedor da unidade ${userData.unidade}?`)
+    if (!confirm) return
+
+    setIsStaffCreating(true)
+    try {
+      await registerStaff(staffData.email, staffData.password, staffData.name, userData.unidade, staffData.canManageStock)
+      showToast("Vendedor cadastrado com sucesso!", "success")
+      setStaffData({ name: '', email: '', password: '', canManageStock: false })
+    } catch (err: any) {
+      console.error(err)
+      showToast("Erro ao criar usuário: " + (err.message || 'Erro desconhecido'), "error")
+    } finally {
+      setIsStaffCreating(false)
     }
   }
 
@@ -206,6 +271,144 @@ export default function ConfiguracoesPage() {
                   >
                      {isSaving ? "Gravando..." : "Salvar Empresa"} <Save size={18} />
                   </button>
+               </div>
+            </section>
+
+            {/* Staff Management Section */}
+            <section className="premium-card p-8 md:p-10 space-y-8">
+               <div className="space-y-1">
+                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Gestão de Equipe (Vendedores)</h2>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">O novo usuário será automaticamente vinculado à sua unidade: <span className="text-blue-600">{userData?.unidade}</span></p>
+               </div>
+               
+               <form onSubmit={handleRegisterStaff} className="bg-slate-50/50 p-6 md:p-8 rounded-3xl border border-slate-100 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nome do Vendedor</label>
+                        <input 
+                           required
+                           type="text" 
+                           value={staffData.name}
+                           onChange={e => setStaffData({...staffData, name: e.target.value})}
+                           className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                           placeholder="Ex: João Silva"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">E-mail de Acesso</label>
+                        <input 
+                           required
+                           type="email" 
+                           value={staffData.email}
+                           onChange={e => setStaffData({...staffData, email: e.target.value})}
+                           className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                           placeholder="vendedor@empresa.com"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Senha Provisória</label>
+                        <input 
+                           required
+                           type="password" 
+                           value={staffData.password}
+                           onChange={e => setStaffData({...staffData, password: e.target.value})}
+                           className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                           placeholder="••••••••"
+                        />
+                     </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-100 mt-4">
+                     <div className="flex items-center gap-3">
+                        <div className="relative inline-flex items-center cursor-pointer">
+                           <input 
+                              type="checkbox" 
+                              id="canManageStock"
+                              checked={staffData.canManageStock}
+                              onChange={e => setStaffData({...staffData, canManageStock: e.target.checked})}
+                              className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+                           />
+                        </div>
+                        <label htmlFor="canManageStock" className="text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none">
+                           Permitir Gerenciar Estoque (Ver custos e margens)
+                        </label>
+                     </div>
+
+                     <button 
+                        type="submit"
+                        disabled={isStaffCreating}
+                        className="w-full md:w-auto px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-slate-900/10"
+                     >
+                        {isStaffCreating ? "Criando..." : "Cadastrar Colaborador"} 
+                        {isStaffCreating ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={18} />}
+                     </button>
+                  </div>
+               </form>
+
+               {/* Active Team List */}
+               <div className="mt-12 space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Equipe Ativa ({team.length})</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                     {team.map(member => (
+                        <div key={member.id} className="group bg-white border border-slate-100 p-4 md:p-6 rounded-3xl hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all">
+                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              {/* Left Side: Info */}
+                              <div className="flex items-center gap-3 md:gap-4">
+                                 <div className={`shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all ${member.role === 'admin' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white'}`}>
+                                    <User size={member.role === 'admin' ? 20 : 18} />
+                                 </div>
+                                 <div className="flex flex-col min-w-0">
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-sm font-black text-slate-900 tracking-tight truncate">{member.nome}</span>
+                                       {member.id === userData?.uid && (
+                                          <span className="shrink-0 px-1.5 py-0.5 bg-slate-900 text-white text-[7px] font-black uppercase rounded-md">Você</span>
+                                       )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-slate-400 truncate">
+                                       <Mail size={10} />
+                                       <span className="text-[9px] font-bold uppercase tracking-tight truncate">{member.email}</span>
+                                    </div>
+                                 </div>
+                              </div>
+
+                              {/* Right Side: Badges & Actions */}
+                              <div className="flex items-center justify-between sm:justify-end gap-2 md:gap-4 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-50">
+                                 <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${member.role === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                                       {member.role}
+                                    </span>
+                                    {member.role === 'vendedor' && (
+                                       <button 
+                                          onClick={() => handleToggleStockPermission(member.id, member.canManageStock)}
+                                          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${
+                                             member.canManageStock 
+                                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' 
+                                             : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-900 hover:text-white'
+                                          }`}
+                                       >
+                                          {member.canManageStock ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                                          <span className="hidden xs:inline">{member.canManageStock ? "Gerente" : "Estoque"}</span>
+                                       </button>
+                                    )}
+                                 </div>
+
+                                 {member.id !== userData?.uid && (
+                                    <button 
+                                       onClick={() => handleDeleteUser(member.id, member.nome)}
+                                       className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-slate-300 hover:bg-red-50 hover:text-red-600 transition-all ml-auto"
+                                       title="Revogar Acesso"
+                                    >
+                                       <Trash size={16} />
+                                    </button>
+                                 )}
+                              </div>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
                </div>
             </section>
          </div>

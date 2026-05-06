@@ -39,9 +39,9 @@ export function RecentSalesHistory() {
                      <span className="text-[10px] font-black text-slate-900 truncate max-w-[120px] uppercase">
                         {sale.clientName || 'Cliente Avulso'}
                      </span>
-                     <span className="text-[9px] font-bold text-slate-400 uppercase">
-                        {sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                     </span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">
+                         {sale.createdAt ? new Date(sale.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} • {sale.operatorName || 'Admin'}
+                      </span>
                   </div>
                </div>
                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${

@@ -191,7 +191,9 @@ export default function VendasPage() {
         selectedCustomer?.id || null, 
         selectedCustomer?.name || null,
         paymentInfo,
-        userData.unidade
+        userData.unidade,
+        userData.uid,
+        userData.nome
       )
 
       setLastSaleResult({
@@ -326,12 +328,12 @@ export default function VendasPage() {
                  <Lock size={32} />
               </div>
               <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-2">Caixa Fechado</h2>
-              <p className="text-sm font-medium text-slate-500 mb-8">Nenhuma venda pode ser processada.<br/>Por favor, retorne ao Dashboard e abra o caixa (informando o troco inicial) para iniciar as operações.</p>
+              <p className="text-sm font-medium text-slate-500 mb-8">Nenhuma venda pode ser processada.<br/>Por favor, acesse a página de turno e abra o seu caixa para iniciar as operações.</p>
               <a 
-                href="/"
-                className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 transition-all flex justify-center items-center gap-2 active:scale-95"
+                href="/caixa"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center gap-2 active:scale-95"
               >
-                 Ir para Dashboard
+                 Abrir Meu Turno
               </a>
            </div>
         </div>

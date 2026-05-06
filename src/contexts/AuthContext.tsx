@@ -12,6 +12,7 @@ interface UserData {
   email: string
   role: string
   unidade: string
+  canManageStock?: boolean
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   loading: boolean
   logout: () => Promise<void>
   signUp: (email: string, pass: string, name: string) => Promise<void>
+  registerStaff: (email: string, pass: string, name: string, unidade: string, canManageStock: boolean) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   signUp: async () => {},
+  registerStaff: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +53,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = docSnap.data() as UserData
           console.log('💎 Unidade Ativa:', data.unidade)
           setUserData(data)
+          
+          // Protection Logic (with userData)
+          if (pathname !== '/login') {
+             const restrictedPaths = ['/', '/configuracoes']
+             if (data.role === 'vendedor' && restrictedPaths.includes(pathname)) {
+               console.warn('⛔ Acesso restrito para vendedores. Redirecionando...')
+               router.push('/vendas')
+             }
+          }
         }
       } else {
         setUserData(null)
@@ -57,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setLoading(false)
 
-      // Protection Logic
+      // Protection Logic (no user)
       if (!user && pathname !== '/login') {
         router.push('/login')
       } else if (user && pathname === '/login') {
@@ -102,8 +114,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/')
   }
 
+  const registerStaff = async (email: string, pass: string, name: string, unidade: string, canManageStock: boolean) => {
+    if (!db) return
+
+    // Setup Secondary App to avoid logging out the current admin
+    const { initializeApp, getApps } = await import('firebase/app')
+    const { getAuth, createUserWithEmailAndPassword, signOut } = await import('firebase/auth')
+
+    const secondaryConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_SENDER_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+    }
+
+    const secondaryApp = getApps().find(a => a.name === 'Secondary') || initializeApp(secondaryConfig, 'Secondary')
+    const secondaryAuth = getAuth(secondaryApp)
+    
+    const { user: newUser } = await createUserWithEmailAndPassword(secondaryAuth, email, pass)
+    
+    await setDoc(doc(db, "usuarios", newUser.uid), {
+      uid: newUser.uid,
+      nome: name,
+      email: email,
+      role: 'vendedor',
+      unidade: unidade,
+      canManageStock,
+      createdAt: serverTimestamp()
+    })
+
+    await signOut(secondaryAuth)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, userData, loading, logout, signUp }}>
+    <AuthContext.Provider value={{ user, userData, loading, logout, signUp, registerStaff }}>
       {loading ? (
         <div className="fixed inset-0 bg-[#F8FAFC] flex items-center justify-center z-[300]">
            <div className="flex flex-col items-center gap-4">

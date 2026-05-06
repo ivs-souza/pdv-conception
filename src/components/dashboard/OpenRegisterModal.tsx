@@ -25,7 +25,7 @@ export function OpenRegisterModal({ onClose }: OpenRegisterModalProps) {
     setIsProcessing(true)
     try {
       if (!userData?.unidade) throw new Error("Unidade não identificada")
-      await CashService.openRegister(val, userData.unidade)
+      await CashService.openRegister(val, userData.unidade, userData.uid, userData.nome)
       showToast("Caixa aberto com sucesso! Bom trabalho.", "success")
       onClose()
     } catch (e: any) {

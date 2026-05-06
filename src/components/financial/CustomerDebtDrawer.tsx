@@ -67,6 +67,8 @@ export function CustomerDebtDrawer({ customerDebt, isRegisterOpen = true, onClos
           inst.clientName,
           inst.saleId,
           userData!.unidade,
+          userData!.uid,
+          userData!.nome,
           lateFee
         )
       }

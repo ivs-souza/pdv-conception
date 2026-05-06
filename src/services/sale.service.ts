@@ -16,7 +16,9 @@ export const SaleService = {
     clientId: string | null = null, 
     clientName: string | null = null,
     paymentInfo: any,
-    unidade: string
+    unidade: string,
+    operatorId: string,
+    operatorName: string
   ) {
     if (!db) throw new Error("Database not connected")
     if (!unidade) throw new Error("Unidade não informada")
@@ -60,6 +62,8 @@ export const SaleService = {
         feePercentage: isNaN(feePercentage) ? 0 : feePercentage,
         estimatedProfit: isNaN(estimatedProfit) ? 0 : estimatedProfit,
         unidade, // Isolated Unit
+        operatorId,
+        operatorName,
         source: 'Sapphire v3.5 Professional'
       }
 

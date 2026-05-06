@@ -67,6 +67,14 @@
         { "fieldPath": "unidade", "order": "ASCENDING" },
         { "fieldPath": "dueDate", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "contas_a_receber",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "unidade", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

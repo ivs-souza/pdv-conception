@@ -33,7 +33,7 @@ export default function CrediarioPage() {
   // ── Listener 0: Cash Register State ──
   useEffect(() => {
     if (!userData?.unidade) return
-    const unsubscribe = CashService.subscribeToCurrentRegister(userData.unidade, (register) => {
+    const unsubscribe = CashService.subscribeToCurrentRegister(userData.unidade, userData.uid, (register) => {
        setIsRegisterOpen(!!register)
     })
     return () => unsubscribe()
@@ -281,10 +281,10 @@ export default function CrediarioPage() {
               </div>
            </div>
            <Link 
-             href="/"
-             className="w-full md:w-auto px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 transition-all flex justify-center items-center gap-2 active:scale-95 shrink-0 whitespace-nowrap"
+             href="/caixa"
+             className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center gap-2 active:scale-95 shrink-0 whitespace-nowrap"
            >
-             Abrir Caixa agora
+             Abrir Meu Turno agora
            </Link>
         </div>
       )}

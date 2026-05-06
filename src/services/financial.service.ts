@@ -21,12 +21,14 @@ export const FinancialService = {
     clientName: string,
     saleId: string,
     unidade: string,
+    operatorId: string,
+    operatorName: string,
     fineApplied: number = 0
   ) {
     if (!db) throw new Error("Database not connected")
     if (!unidade) throw new Error("Unidade não informada")
 
-    const activeRegister = await CashService.getCurrentRegister(unidade)
+    const activeRegister = await CashService.getCurrentRegister(unidade, operatorId)
     if (!activeRegister) {
        throw new Error("Caixa fechado. Abra o caixa para registrar recebimentos.")
     }
@@ -39,6 +41,8 @@ export const FinancialService = {
       status: 'PAID',
       paidAmount: paidAmount,
       fineApplied: fineApplied,
+      operatorId,
+      operatorName,
       paidAt: serverTimestamp()
     })
 
@@ -53,6 +57,8 @@ export const FinancialService = {
       clientName: clientName,
       sourceId: installmentId,
       saleId: saleId,
+      operatorId,
+      operatorName,
       method: 'DINHEIRO', // Default assumption for manual receiving, could be expanded
       unidade, // Isolated Unit
       createdAt: serverTimestamp(),

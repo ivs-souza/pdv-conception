@@ -22,6 +22,7 @@ export function useCurrentRegister() {
     try {
       const unsubscribe = CashService.subscribeToCurrentRegister(
         userData.unidade, 
+        userData.uid,
         (reg) => {
           console.log('📦 Dashboard: Caixa pronto', reg ? `(Aberto: ${reg.id})` : '(Fechado)')
           setCurrentRegister(reg)

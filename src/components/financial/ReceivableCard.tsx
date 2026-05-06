@@ -63,6 +63,8 @@ export function ReceivableCard({ installment, isRegisterOpen = true, onProcessed
         installment.clientName,
         installment.saleId,
         userData!.unidade,
+        userData!.uid,
+        userData!.nome,
         lateFee
       )
       

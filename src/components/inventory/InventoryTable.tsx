@@ -14,6 +14,7 @@ import { db } from '@/utils/firebase'
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { formatCurrency } from '@/utils/format'
 import { useToast } from '@/components/layout/Toast'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface InventoryTableProps {
   products: any[]
@@ -26,6 +27,7 @@ interface InventoryTableProps {
  * Features: Real-time Firestore sync (via Props), Stock Alerts, and Margin Analysis.
  */
 export function InventoryTable({ products, loading, onEdit }: InventoryTableProps) {
+  const { userData } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const { showToast } = useToast()
 
@@ -80,7 +82,9 @@ export function InventoryTable({ products, loading, onEdit }: InventoryTableProp
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Categoria</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estoque Atual</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Venda</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Margem</th>
+                {(userData?.role === 'admin' || userData?.canManageStock) && (
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Margem</th>
+                )}
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Ações</th>
               </tr>
             </thead>
@@ -126,12 +130,14 @@ export function InventoryTable({ products, loading, onEdit }: InventoryTableProp
                     <td className="px-8 py-5">
                        <span className="text-sm font-black text-slate-900">{formatCurrency(product.salePrice)}</span>
                     </td>
-                    <td className="px-8 py-5">
-                       <div className="flex items-center gap-1.5 text-emerald-600">
-                          <TrendingUp size={14} />
-                          <span className="text-xs font-bold">{margin}%</span>
-                       </div>
-                    </td>
+                    {(userData?.role === 'admin' || userData?.canManageStock) && (
+                      <td className="px-8 py-5">
+                         <div className="flex items-center gap-1.5 text-emerald-600">
+                            <TrendingUp size={14} />
+                            <span className="text-xs font-bold">{margin}%</span>
+                         </div>
+                      </td>
+                    )}
                     <td className="px-8 py-5">
                        <div className="flex items-center justify-end gap-3">
                           <button 

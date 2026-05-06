@@ -236,20 +236,22 @@ export function ProductModal({ onClose, product }: ProductModalProps) {
                     </div>
                  </div>
 
-                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Preço de Custo (R$)</label>
-                       <input 
-                         required
-                         type="number" step="0.01"
-                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-                         placeholder="0,00"
-                         value={formData.costPrice}
-                         onChange={e => setFormData({...formData, costPrice: e.target.value})}
-                       />
-                    </div>
-                    <div>
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Preço de Venda (R$)</label>
+                  <div className="grid grid-cols-2 gap-4">
+                     {(userData?.role === 'admin' || userData?.canManageStock) && (
+                        <div>
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Preço de Custo (R$)</label>
+                           <input 
+                             required
+                             type="number" step="0.01"
+                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
+                             placeholder="0,00"
+                             value={formData.costPrice}
+                             onChange={e => setFormData({...formData, costPrice: e.target.value})}
+                           />
+                        </div>
+                     )}
+                     <div className={!(userData?.role === 'admin' || userData?.canManageStock) ? 'col-span-2' : ''}>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Preço de Venda (R$)</label>
                        <input 
                          required
                          type="number" step="0.01"

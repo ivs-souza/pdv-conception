@@ -176,7 +176,8 @@ export default function HistoricoVendasPage() {
                               </span>
                            </td>
                            <td className="px-6 py-4">
-                              <span className="text-sm font-bold text-slate-900">{sale.clientName || 'Cliente Balcão'}</span>
+                              <span className="text-sm font-bold text-slate-900 block">{sale.clientName || 'Cliente Balcão'}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Operador: {sale.operatorName || 'Admin'}</span>
                            </td>
                            <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${

@@ -14,11 +14,12 @@ import {
 } from 'firebase/firestore'
 
 export const CashService = {
-  subscribeToCurrentRegister(unidade: string, callback: (register: any | null) => void, errorCallback?: (error: any) => void) {
+  subscribeToCurrentRegister(unidade: string, operatorId: string, callback: (register: any | null) => void, errorCallback?: (error: any) => void) {
     if (!db || !unidade) return () => {}
     const q = query(
       collection(db, "caixas"),
       where("unidade", "==", unidade),
+      where("operatorId", "==", operatorId),
       where("status", "==", "OPEN"),
       orderBy("openedAt", "desc"),
       limit(1)
@@ -38,11 +39,12 @@ export const CashService = {
     })
   },
 
-  async getCurrentRegister(unidade: string) {
+  async getCurrentRegister(unidade: string, operatorId: string) {
     if (!db || !unidade) return null
     const q = query(
       collection(db, "caixas"), 
       where("unidade", "==", unidade),
+      where("operatorId", "==", operatorId),
       where("status", "==", "OPEN"), 
       orderBy("openedAt", "desc"),
       limit(1)
@@ -53,30 +55,32 @@ export const CashService = {
     return { id: d.id, ...d.data() }
   },
 
-  async openRegister(initialCash: number, unidade: string, operatorName: string = 'Admin') {
+  async openRegister(initialCash: number, unidade: string, operatorId: string, operatorName: string) {
     if (!db) throw new Error("Sem conexão com o banco.")
     if (!unidade) throw new Error("Unidade não informada")
 
-    const current = await this.getCurrentRegister(unidade)
-    if (current) throw new Error("Já existe um caixa aberto no momento.")
+    const current = await this.getCurrentRegister(unidade, operatorId)
+    if (current) throw new Error("Você já possui um turno aberto.")
 
     const ref = await addDoc(collection(db, "caixas"), {
       status: 'OPEN',
       unidade, // Isolated Unit
       openedAt: serverTimestamp(),
       initialCash,
+      operatorId,
       operatorName,
       createdAt: serverTimestamp()
     })
     return ref.id
   },
 
-  async calculateTurnSummary(unidade: string, openedAtDate: Date) {
+  async calculateTurnSummary(unidade: string, operatorId: string, openedAtDate: Date) {
      if (!db || !unidade) return null
      
      const salesQ = query(
         collection(db, "vendas"),
         where("unidade", "==", unidade),
+        where("operatorId", "==", operatorId),
         where("createdAt", ">=", openedAtDate)
      )
      const salesSnap = await getDocs(salesQ)
@@ -84,6 +88,7 @@ export const CashService = {
      const cashFlowQ = query(
         collection(db, "fluxo_de_caixa"),
         where("unidade", "==", unidade),
+        where("operatorId", "==", operatorId),
         where("createdAt", ">=", openedAtDate),
         where("type", "==", "ENTRADA_CREDIARIO")
      )
@@ -117,7 +122,7 @@ export const CashService = {
      return summary
   },
 
-  async closeRegister(id: string, finalCountedCash: number, expectedCash: number, summary: any) {
+  async closeRegister(id: string, finalCountedCash: number, expectedCash: number, summary: any, operatorId: string, operatorName: string) {
     if (!db) throw new Error("Sem conexão")
     
     const discrepancy = finalCountedCash - expectedCash
@@ -128,6 +133,8 @@ export const CashService = {
       finalCountedCash,
       expectedCash,
       discrepancy,
+      closingOperatorId: operatorId,
+      closingOperatorName: operatorName,
       summary
     })
     

@@ -12,7 +12,8 @@ import {
   Settings,
   Gem,
   BookOpen,
-  LogOut
+  LogOut,
+  Wallet
 } from 'lucide-react'
 import { SettingsService } from '@/services/settings.service'
 import { useAuth } from '@/contexts/AuthContext'
@@ -34,14 +35,15 @@ export function Sidebar() {
   }, [userData?.unidade])
 
   const menuItems = [
-    { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
+    { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/', role: 'admin' },
+    { name: 'Meu Turno', icon: <Wallet size={20} />, path: '/caixa' },
     { name: 'Vendas', icon: <ShoppingCart size={20} />, path: '/vendas' },
     { name: 'Crediário', icon: <BookOpen size={20} />, path: '/crediario' },
     { name: 'Estoque', icon: <Package size={20} />, path: '/estoque' },
     { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
     { name: 'Taxas', icon: <Calculator size={20} />, path: '/taxas' },
-    { name: 'Configurações', icon: <Settings size={20} />, path: '/configuracoes' }
-  ]
+    { name: 'Configurações', icon: <Settings size={20} />, path: '/configuracoes', role: 'admin' }
+  ].filter(item => !item.role || item.role === userData?.role)
 
   // Only render sidebar if user is logged in
   if (!user) return null

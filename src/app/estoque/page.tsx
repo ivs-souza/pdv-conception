@@ -112,20 +112,21 @@ export default function EstoquePage() {
         </div>
       </header>
 
-      {/* Stats Summary Panel */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <div className="premium-card p-6 flex items-center gap-5">
-            <div className={`p-3 bg-emerald-50 text-emerald-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
-               <TrendingUpShadow />
-            </div>
-            <div>
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor do Inventário</p>
-               <h4 className="text-xl font-black text-slate-900 tracking-tight">
-                  {loading ? 'R$ ---' : formatCurrency(stats.totalValue)}
-               </h4>
-            </div>
-         </div>
-         <div className="premium-card p-6 flex items-center gap-5">
+         {(userData?.role === 'admin' || userData?.canManageStock) && (
+           <div className="premium-card p-6 flex items-center gap-5">
+              <div className={`p-3 bg-emerald-50 text-emerald-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
+                 <TrendingUpShadow />
+              </div>
+              <div>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor do Inventário</p>
+                 <h4 className="text-xl font-black text-slate-900 tracking-tight">
+                    {loading ? 'R$ ---' : formatCurrency(stats.totalValue)}
+                 </h4>
+              </div>
+           </div>
+         )}
+         <div className={`premium-card p-6 flex items-center gap-5 ${!(userData?.role === 'admin' || userData?.canManageStock) ? 'md:col-span-2' : ''}`}>
             <div className={`p-3 bg-blue-50 text-blue-600 rounded-xl ${loading ? 'animate-pulse' : ''}`}>
                <Package size={20} />
             </div>
